@@ -1,9 +1,15 @@
 import struct
 import os
+import sys
+
+# Đảm bảo Console hiển thị được tiếng Việt nếu chạy trực tiếp
+if sys.stdout.encoding != 'utf-8':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 def read_binary_file(file_path):
     """
-    Đọc tập tin nhị phân và chuyển đổi sang danh sách số thực (8 bytes).
+    Đọc tập tin nhị phân và chuyển đổi sang danh sách số thực (8 bytes). [cite: 229, 230]
     Sử dụng định dạng 'd' (double) để đảm bảo kích thước 8 bytes mỗi phần tử.
     """
     data = []
@@ -16,8 +22,8 @@ def read_binary_file(file_path):
 
 def write_binary_file(file_path, data):
     """
-    Ghi danh sách số thực vào tập tin dưới dạng nhị phân 8-byte.
-    Đây là bước quan trọng để minh họa việc quản lý dữ liệu trên đĩa (Disk).
+    Ghi danh sách số thực vào tập tin dưới dạng nhị phân 8-byte. [cite: 230]
+    Minh họa quản lý dữ liệu trên đĩa (Disk) với chi phí IO là 2*(M+N). 
     """
     with open(file_path, 'wb') as f:
         for value in data:
@@ -25,17 +31,13 @@ def write_binary_file(file_path, data):
 
 def create_sample_binary(file_path="input_test.bin", numbers=None):
     """
-    Tạo một file nhị phân sẵn có để người dùng không phải tự tạo file.
-    Mặc định tạo ra 12 số thực chưa sắp xếp để minh họa việc chia runs.
+    Tạo file nhị phân mẫu để minh họa việc chia runs và trộn. [cite: 254, 255]
     """
     if numbers is None:
-        # Dữ liệu mẫu tương tự ví dụ trong slide (trang 26-33)
+        # Dữ liệu 12 phần tử để minh họa thuật toán với các file kích thước nhỏ. [cite: 360]
         numbers = [44.0, 10.0, 33.0, 12.0, 55.0, 31.0, 18.0, 22.0, 27.0, 24.0, 3.0, 1.0]
     
     write_binary_file(file_path, numbers)
-    print(f"--- Đã tạo file sẵn: {file_path} ---")
-    print(f"Nội dung (số thực): {numbers}")
-
-if __name__ == "__main__":
-    # Khi chạy trực tiếp file này, nó sẽ tạo ra file input_test.bin
-    create_sample_binary()
+    # Loại bỏ icon để tránh lỗi 'charmap' trên một số máy Windows
+    print(f"--- DA TAO FILE: {file_path} ---") 
+    print(f"Noi dung (so thuc): {numbers}")
