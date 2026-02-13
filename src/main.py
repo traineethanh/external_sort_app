@@ -82,7 +82,30 @@ class FinalAnimationApp:
         utils.create_sample_binary()
         steps = self.sorter.get_animation_steps("input_test.bin")
         self.run_steps(steps)
+    def run_steps(self, steps):
+            if not steps: 
+                self.desc_label.config(text="CHUC MUNG! DA SAP XEP XONG HOAN TOAN")
+                return
+            
+            s = steps.pop(0)
+            self.desc_label.config(text=s['desc'])
 
+            if s['act'] == 'WRITE_RUN':
+                # Vẽ Pass 0 giống như cũ
+                # ... (logic di chuyển từ RAM lên Output Disk)
+                self.root.after(1500, lambda: self.run_steps(steps))
+
+            elif s['act'] == 'LOAD_FOR_MERGE':
+                # Hiệu ứng: Lấy 2 run từ đĩa trên cùng bay xuống RAM
+                # Đây là lúc thuật toán "sees" các phần tử để so sánh [cite: 118]
+                self.desc_label.config(text=f"Dang lay du lieu tu Disk xuong Buffer de tron...")
+                # (Thêm logic di chuyển vật thể tại đây)
+                self.root.after(2000, lambda: self.run_steps(steps))
+
+            elif s['act'] == 'SAVE_MERGED':
+                # Hiệu ứng: Kết quả sau khi so sánh bay ngược lên vùng lưu trữ cuối cùng
+                # ... (logic di chuyển vật thể)
+                self.root.after(2000, lambda: self.run_steps(steps))
 if __name__ == "__main__":
     root = tk.Tk()
     app = FinalAnimationApp(root)
