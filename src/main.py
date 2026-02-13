@@ -6,12 +6,11 @@ from algorithms import ExternalSort
 class FinalApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("UIT - External Sort Full Motion - Quang Thanh")
         self.canvas = tk.Canvas(root, width=800, height=600, bg="white")
         self.canvas.pack()
         self.setup_ui()
         self.sorter = ExternalSort()
-        self.run_objs = {} # Luu cac block theo tung Run
+        self.run_objs = {} 
 
     def setup_ui(self):
         self.canvas.create_rectangle(50, 20, 750, 150, outline="green", width=2) # Output Disk
@@ -19,7 +18,7 @@ class FinalApp:
         self.canvas.create_rectangle(50, 450, 750, 580, outline="black", width=2) # Input Disk
         self.status = tk.Label(self.root, text="San sang...", font=("Arial", 11))
         self.status.pack()
-        tk.Button(self.root, text="CHAY QUY TRINH", command=self.start, bg="#0078D7", fg="white").pack()
+        tk.Button(self.root, text="CHAY QUY TRINH", command=self.start).pack()
 
     def move_item(self, item_id, tx, ty, callback=None):
         c = self.canvas.coords(item_id)
@@ -33,7 +32,7 @@ class FinalApp:
 
     def run_steps(self, steps):
         if not steps:
-            self.status.config(text="CHUC MUNG! DA XONG HOAN TOAN.")
+            self.status.config(text="DA XONG HOAN TOAN!")
             return
         
         s = steps.pop(0)
@@ -55,12 +54,6 @@ class FinalApp:
                 self.ram_objs.append((r, t))
             self.root.after(1000, lambda: self.run_steps(steps))
 
-        elif s['act'] == 'SORT':
-            for i, (r, t) in enumerate(self.ram_objs):
-                self.canvas.itemconfig(t, text=str(int(s['values'][i])))
-                self.canvas.itemconfig(r, fill="#81D4FA")
-            self.root.after(800, lambda: self.run_steps(steps))
-
         elif s['act'] == 'WRITE_RUN':
             idx = s['run_idx']; self.run_objs[idx] = []
             for i, (r, t) in enumerate(self.ram_objs):
@@ -70,25 +63,25 @@ class FinalApp:
             self.root.after(1000, lambda: self.run_steps(steps))
 
         elif s['act'] == 'LOAD_FOR_MERGE':
-            # Gom cac khoi tu 2 run ve RAM để trộn [cite: 605]
+            # Gom vat the tu 2 run hien tai vao RAM [cite: 13, 118]
             self.ram_objs = self.run_objs[s['r1_idx']] + self.run_objs[s['r2_idx']]
             for i, (r, t) in enumerate(self.ram_objs):
                 self.move_item(r, 210+i*40, 220); self.move_item(t, 232+i*40, 242)
-                self.canvas.itemconfig(r, fill="#FF6347") # Mau dang tron
+                self.canvas.itemconfig(r, fill="#FF6347")
             self.root.after(1500, lambda: self.run_steps(steps))
 
         elif s['act'] == 'SAVE_MERGED':
-            # Cap nhat dải màu xanh lá và đưa lên Disk [cite: 589]
+            # Sau khi tron, dồn tất cả vật thể vào Run 0 để Pass sau dùng tiếp
             for i, (r, t) in enumerate(self.ram_objs):
                 self.canvas.itemconfig(t, text=str(int(s['values'][i])))
                 tx = 80 + i*48
                 self.move_item(r, tx, 50); self.move_item(t, tx+22, 72)
                 self.canvas.itemconfig(r, fill="#32CD32")
-            # Cap nhat run_objs de tiep tuc Pass sau
+            # QUAN TRONG: Tai cau truc lai danh sach run sau moi lan tron
             self.run_objs = {0: self.ram_objs} 
             self.root.after(1500, lambda: self.run_steps(steps))
         
-        else: # SKIP_LE
+        else: # SORT, SKIP_LE
             self.root.after(800, lambda: self.run_steps(steps))
 
     def start(self):
