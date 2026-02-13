@@ -1,87 +1,71 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
-import os
-import time
+from tkinter import filedialog, ttk
 import utils
 from algorithms import ExternalSort
+import os
 
-class VisualExternalSort(ExternalSort):
-    """Kế thừa ExternalSort để thêm tính năng cập nhật giao diện trực quan."""
-    def __init__(self, canvas, canvas_labels, buffer_size=3):
-        super().__init__(buffer_size)
-        self.canvas = canvas
-        self.labels = canvas_labels
-
-    def update_ui(self, stage_text, buffer_data=None, disk_runs=None):
-        """Cập nhật hình ảnh mô phỏng trên Canvas."""
-        self.labels['status'].config(text=f"Trạng thái: {stage_text}")
+class AnimationApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("UIT - External Sort Animation - Quang Thanh")
+        self.sorter = ExternalSort()
         
-        # Vẽ Buffer (Main Memory) - slide 7, 8
-        self.canvas.delete("buffer_items")
-        if buffer_data:
-            for i, val in enumerate(buffer_data):
-                x = 50 + (i * 100)
-                self.canvas.create_rectangle(x, 50, x+80, 100, fill="#ADD8E6", tags="buffer_items")
-                self.canvas.create_text(x+40, 75, text=str(val), tags="buffer_items")
-
-        # Vẽ các Runs trên Disk - slide 36, 37
-        self.canvas.delete("disk_items")
-        if disk_runs:
-            for i, run in enumerate(disk_runs):
-                y = 150 + (i * 30)
-                self.canvas.create_text(50, y, text=f"Run {i}: {run}", anchor="w", tags="disk_items")
+        # Canvas mô phỏng Disk và RAM [cite: 43, 44]
+        self.canvas = tk.Canvas(root, width=600, height=450, bg="#f0f0f0")
+        self.canvas.pack(pady=10)
         
-        self.canvas.update()
-        time.sleep(1) # Tạm dừng để người dùng kịp quan sát giống như từng bước trong slide
+        self.setup_ui()
+        self.steps = []
+        self.current_step = 0
 
-def run_app():
-    root = tk.Tk()
-    root.title("UIT - Trực quan hóa External Merge Sort")
-    root.geometry("600x600")
+    def setup_ui(self):
+        # Vẽ vùng RAM [cite: 131, 132]
+        self.canvas.create_rectangle(50, 50, 550, 150, fill="#e1f5fe", outline="#01579b", width=2)
+        self.canvas.create_text(300, 30, text="MAIN MEMORY (BUFFER PAGES)", font=("Arial", 10, "bold"))
+        
+        # Vẽ vùng DISK [cite: 43, 115]
+        self.canvas.create_rectangle(50, 250, 550, 420, fill="#efebe9", outline="#4e342e", width=2)
+        self.canvas.create_text(300, 230, text="DISK STORAGE (RUNS)", font=("Arial", 10, "bold"))
 
-    # --- Khu vực hiển thị mô phỏng (Canvas) ---
-    ttk.Label(root, text="MÔ PHỎNG QUY TRÌNH (GIỐNG SLIDE)", font=('Helvetica', 10, 'bold')).pack(pady=5)
-    
-    canvas = tk.Canvas(root, width=550, height=300, bg="white", highlightthickness=1)
-    canvas.pack(pady=10)
-    
-    # Vẽ khung cố định cho Main Memory và Disk [cite: 43, 44]
-    canvas.create_text(20, 20, text="MAIN MEMORY (BUFFER)", anchor="w", font=('Helvetica', 9, 'bold'))
-    canvas.create_rectangle(10, 40, 350, 110, outline="blue") # Buffer area
-    
-    canvas.create_text(20, 130, text="DISK (STORAGE)", anchor="w", font=('Helvetica', 9, 'bold'))
-    canvas.create_rectangle(10, 145, 540, 290, outline="brown") # Disk area
+        self.status_text = self.canvas.create_text(300, 200, text="Sẵn sàng", fill="red")
 
-    status_label = ttk.Label(root, text="Trạng thái: Sẵn sàng", foreground="blue")
-    status_label.pack()
+        btn_frame = ttk.Frame(self.root)
+        btn_frame.pack(pady=10)
+        ttk.Button(btn_frame, text="Tạo dữ liệu & Chạy Animation", command=self.start_animation).pack(side="left", padx=10)
 
-    ui_elements = {'status': status_label}
-    selected_file = tk.StringVar(value="Chưa chọn file")
-
-    # --- Các hàm điều khiển ---
-    def execute_sort():
-        input_path = selected_file.get()
-        if not os.path.exists(input_path):
-            messagebox.showwarning("Cảnh báo", "Vui lòng chọn file!")
+    def draw_step(self):
+        if self.current_step >= len(self.steps):
+            self.canvas.itemconfig(self.status_text, text="HOÀN TẤT SẮP XẾP NGOẠI!")
             return
 
-        # Khởi tạo lớp trực quan hóa
-        visual_sorter = VisualExternalSort(canvas, ui_elements)
-        output_path = "sorted_output.bin"
+        step = self.steps[self.current_step]
+        self.canvas.itemconfig(self.status_text, text=step['desc'])
         
-        try:
-            # Lưu ý: Bạn cần sửa algorithms.py để gọi self.update_ui() tại các bước then chốt
-            visual_sorter.sort(input_path, output_path)
-            messagebox.showinfo("Xong", "Đã sắp xếp và trực quan hóa hoàn tất!")
-        except Exception as e:
-            messagebox.showerror("Lỗi", str(e))
+        # Xóa các phần tử cũ
+        self.canvas.delete("data")
 
-    # (Các phần nút bấm Tạo dữ liệu mẫu và Chọn file giữ nguyên như cũ)
-    ttk.Button(root, text="1. Tạo dữ liệu mẫu", command=lambda: utils.create_sample_binary()).pack(pady=5)
-    ttk.Button(root, text="2. Chọn tập tin nguồn", command=lambda: selected_file.set(filedialog.askopenfilename())).pack(pady=5)
-    tk.Button(root, text="BẮT ĐẦU MÔ PHỎNG", command=execute_sort, bg="#0078D7", fg="white", font=('bold')).pack(pady=20)
+        # Vẽ dữ liệu trong Buffer [cite: 158]
+        for i, val in enumerate(step['buffer']):
+            x = 80 + (i * 60)
+            self.canvas.create_rectangle(x, 70, x+50, 120, fill="#81d4fa", tags="data")
+            self.canvas.create_text(x+25, 95, text=str(int(val)), tags="data")
 
-    root.mainloop()
+        # Vẽ các Runs trên Disk [cite: 341, 427]
+        for i, run_name in enumerate(step['runs']):
+            y = 270 + (i * 30)
+            self.canvas.create_text(100, y, text=f"Run {i}: (Da sap xep tren disk)", anchor="w", tags="data")
+
+        self.current_step += 1
+        # Tự động chuyển bước sau 1.5 giây để tạo hiệu ứng animation [cite: 509]
+        self.root.after(1500, self.draw_step)
+
+    def start_animation(self):
+        utils.create_sample_binary()
+        self.steps, _ = self.sorter.get_initial_runs_steps("input_test.bin")
+        self.current_step = 0
+        self.draw_step()
 
 if __name__ == "__main__":
-    run_app()
+    root = tk.Tk()
+    app = AnimationApp(root)
+    root.mainloop()
