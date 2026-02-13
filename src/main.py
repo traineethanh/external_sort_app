@@ -6,20 +6,20 @@ from algorithms import ExternalSort
 class FinalApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("UIT - External Sort Full Process")
+        self.root.title("UIT - External Sort Full Motion - Quang Thanh")
         self.canvas = tk.Canvas(root, width=800, height=600, bg="white")
         self.canvas.pack()
         self.setup_ui()
         self.sorter = ExternalSort()
-        self.run_objs = {} # Luu cac khoi theo Run
+        self.run_objs = {} # Luu cac block theo Run
 
     def setup_ui(self):
-        self.canvas.create_rectangle(50, 20, 750, 150, outline="green", width=2) # Output [cite: 111]
-        self.canvas.create_rectangle(200, 200, 600, 320, outline="blue", width=2) # RAM [cite: 104]
-        self.canvas.create_rectangle(50, 450, 750, 580, outline="black", width=2) # Input [cite: 106]
+        self.canvas.create_rectangle(50, 20, 750, 150, outline="green", width=2) # Output Disk
+        self.canvas.create_rectangle(200, 200, 600, 320, outline="blue", width=2) # RAM Buffer
+        self.canvas.create_rectangle(50, 450, 750, 580, outline="black", width=2) # Input Disk
         self.status = tk.Label(self.root, text="San sang...", font=("Arial", 11))
         self.status.pack()
-        tk.Button(self.root, text="BAT DAU QUY TRINH", command=self.start).pack()
+        tk.Button(self.root, text="CHAY QUY TRINH", command=self.start, bg="#0078D7", fg="white").pack()
 
     def move_item(self, item_id, tx, ty, callback=None):
         c = self.canvas.coords(item_id)
@@ -56,7 +56,7 @@ class FinalApp:
             self.root.after(1000, lambda: self.run_steps(steps))
 
         elif s['act'] == 'LOAD_FOR_MERGE':
-            # Keo 2 run ve RAM de tron [cite: 119]
+            # Gom cac khoi tu 2 run ve RAM [cite: 104, 132]
             self.ram_objs = self.run_objs[s['r1_idx']] + self.run_objs[s['r2_idx']]
             for i, (r, t) in enumerate(self.ram_objs):
                 self.move_item(r, 210+i*40, 220); self.move_item(t, 232+i*40, 242)
@@ -64,14 +64,14 @@ class FinalApp:
             self.root.after(1500, lambda: self.run_steps(steps))
 
         elif s['act'] == 'SAVE_MERGED':
-            # Ghi ket qua dải màu xanh lá 
+            # Ghi ket qua vao danh sach run moi [cite: 153, 206]
             for i, (r, t) in enumerate(self.ram_objs):
                 self.canvas.itemconfig(t, text=str(int(s['values'][i])))
-                tx = 80 + i*48
+                tx = 100 + i*48
                 self.move_item(r, tx, 50); self.move_item(t, tx+22, 72)
                 self.canvas.itemconfig(r, fill="#32CD32")
-            # Cap nhat lai danh sach run moi de Pass sau co the dung
-            self.run_objs = {0: self.ram_objs} 
+            # Cap nhat run_objs cho Pass tiep theo
+            self.run_objs = {0: self.ram_objs}
             self.root.after(1500, lambda: self.run_steps(steps))
         
         else: # READ, SORT, SKIP_LE
