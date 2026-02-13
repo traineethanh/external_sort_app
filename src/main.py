@@ -6,21 +6,20 @@ from algorithms import ExternalSort
 class FinalApp:
     def __init__(self, root):
         self.root = root
+        self.root.title("UIT - External Sort Full Motion")
         self.canvas = tk.Canvas(root, width=800, height=600, bg="white")
         self.canvas.pack()
         self.setup_ui()
         self.sorter = ExternalSort()
-        self.run_items = {} # Lưu trữ các block theo từng Run
+        self.run_objs = {} # Luu cac block theo Run
 
     def setup_ui(self):
-        # Vẽ 3 vùng: Disk Tạm (Trên), RAM (Giữa), Disk Gốc (Dưới)
-        self.canvas.create_rectangle(50, 20, 750, 150, outline="green", width=2) # Output
-        self.canvas.create_rectangle(200, 200, 600, 320, outline="blue", width=2) # RAM
-        self.canvas.create_rectangle(50, 450, 750, 580, outline="black", width=2) # Input
-        
-        self.status = tk.Label(self.root, text="Sẵn sàng...", font=("Arial", 11))
+        self.canvas.create_rectangle(50, 20, 750, 150, outline="green", width=2) # Output Disk [cite: 43]
+        self.canvas.create_rectangle(200, 200, 600, 320, outline="blue", width=2) # RAM Buffer [cite: 18]
+        self.canvas.create_rectangle(50, 450, 750, 580, outline="black", width=2) # Input Disk [cite: 115]
+        self.status = tk.Label(self.root, text="San sang...", font=("Arial", 11))
         self.status.pack()
-        tk.Button(self.root, text="CHẠY TOÀN QUY TRÌNH", command=self.start).pack()
+        tk.Button(self.root, text="BAT DAU QUY TRINH", command=self.start).pack()
 
     def move_item(self, item_id, tx, ty, callback=None):
         c = self.canvas.coords(item_id)
@@ -34,7 +33,7 @@ class FinalApp:
 
     def run_steps(self, steps):
         if not steps:
-            self.status.config(text="CHÚC MỪNG! ĐÃ XONG.")
+            self.status.config(text="HOAN TAT SAP XEP!")
             return
         
         s = steps.pop(0)
@@ -63,29 +62,30 @@ class FinalApp:
             self.root.after(1000, lambda: self.run_steps(steps))
 
         elif s['act'] == 'WRITE_RUN':
-            run_idx = s['run_idx']
-            self.run_items[run_idx] = []
+            idx = s['run_idx']; self.run_objs[idx] = []
             for i, (r, t) in enumerate(self.ram_objs):
-                tx = 60 + run_idx*230 + i*45
+                tx = 60 + idx*230 + i*45
                 self.move_item(r, tx, 50); self.move_item(t, tx+20, 72)
-                self.run_items[run_idx].append((r, t))
+                self.run_objs[idx].append((r, t))
             self.root.after(1500, lambda: self.run_steps(steps))
 
         elif s['act'] == 'LOAD_FOR_MERGE':
-            # Kéo ngược từ Disk Tạm về RAM
-            self.ram_objs = self.run_items[s['r1_idx']] + self.run_items[s['r2_idx']]
+            # Gom cac khoi tu 2 run ve RAM
+            self.ram_objs = self.run_objs[s['r1_idx']] + self.run_objs[s['r2_idx']]
             for i, (r, t) in enumerate(self.ram_objs):
                 self.move_item(r, 210+i*45, 220); self.move_item(t, 232+i*45, 242)
-                self.canvas.itemconfig(r, fill="#FF6347") # Đổi sang màu trộn
+                self.canvas.itemconfig(r, fill="#FF6347")
             self.root.after(2000, lambda: self.run_steps(steps))
 
         elif s['act'] == 'SAVE_MERGED':
-            # Ghi kết quả sau khi trộn lên lại Disk Tạm
             for i, (r, t) in enumerate(self.ram_objs):
                 self.canvas.itemconfig(t, text=str(int(s['values'][i])))
                 self.move_item(r, 150+i*50, 50); self.move_item(t, 172+i*50, 72)
-                self.canvas.itemconfig(r, fill="#32CD32") # Màu thành phẩm
+                self.canvas.itemconfig(r, fill="#32CD32")
             self.root.after(2000, lambda: self.run_steps(steps))
+
+        elif s['act'] == 'SKIP_LE':
+            self.root.after(500, lambda: self.run_steps(steps))
 
     def start(self):
         self.canvas.delete("all"); self.setup_ui()
