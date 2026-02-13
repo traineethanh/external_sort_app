@@ -42,39 +42,29 @@ class FinalAnimationApp:
         animate(0)
 
     def run_steps(self, steps):
-        if not steps: return
+        if not steps: 
+            self.desc_label.config(text="CHUC MUNG! DA SAP XEP XONG HOAN TOAN")
+            return
+        
         s = steps.pop(0)
         self.desc_label.config(text=s['desc'])
 
-        if s['act'] == 'INIT_DISK':
-            # Tao cac khoi du lieu tren Disk goc
-            for i, v in enumerate(s['values']):
-                rect = self.canvas.create_rectangle(70+i*55, 480, 120+i*55, 530, fill="#FFD700", tags="disk_raw")
-                txt = self.canvas.create_text(95+i*55, 505, text=str(int(v)), tags="disk_raw")
-                self.data_objects[i] = (rect, txt)
-            self.root.after(1000, lambda: self.run_steps(steps))
-
-        elif s['act'] == 'READ':
-            self.current_ram_objs = []
-            start_idx = s['idx']
-            for i in range(len(s['values'])):
-                r, t = self.data_objects[start_idx + i]
-                self.move_item(r, 220+i*100, 220, lambda: None)
-                self.move_item(t, 245+i*100, 245, lambda: None)
-                self.current_ram_objs.append((r, t))
+        if s['act'] == 'WRITE_RUN':
+            # Vẽ Pass 0 giống như cũ
+            # ... (logic di chuyển từ RAM lên Output Disk)
             self.root.after(1500, lambda: self.run_steps(steps))
 
-        elif s['act'] == 'SORT':
-            for i, (r, t) in enumerate(self.current_ram_objs):
-                self.canvas.itemconfig(t, text=str(int(s['values'][i])))
-                self.canvas.itemconfig(r, fill="#00BFFF") # Doi mau khi da sap xep
-            self.root.after(1000, lambda: self.run_steps(steps))
+        elif s['act'] == 'LOAD_FOR_MERGE':
+            # Hiệu ứng: Lấy 2 run từ đĩa trên cùng bay xuống RAM
+            # Đây là lúc thuật toán "sees" các phần tử để so sánh [cite: 118]
+            self.desc_label.config(text=f"Dang lay du lieu tu Disk xuong Buffer de tron...")
+            # (Thêm logic di chuyển vật thể tại đây)
+            self.root.after(2000, lambda: self.run_steps(steps))
 
-        elif s['act'] == 'WRITE_RUN':
-            for i, (r, t) in enumerate(self.current_ram_objs):
-                self.move_item(r, 70 + s['run_idx']*200 + i*45, 50, lambda: None)
-                self.move_item(t, 90 + s['run_idx']*200 + i*45, 75, lambda: None)
-            self.root.after(1500, lambda: self.run_steps(steps))
+        elif s['act'] == 'SAVE_MERGED':
+            # Hiệu ứng: Kết quả sau khi so sánh bay ngược lên vùng lưu trữ cuối cùng
+            # ... (logic di chuyển vật thể)
+            self.root.after(2000, lambda: self.run_steps(steps))
 
     def start(self):
         self.canvas.delete("all")
@@ -82,30 +72,6 @@ class FinalAnimationApp:
         utils.create_sample_binary()
         steps = self.sorter.get_animation_steps("input_test.bin")
         self.run_steps(steps)
-    def run_steps(self, steps):
-            if not steps: 
-                self.desc_label.config(text="CHUC MUNG! DA SAP XEP XONG HOAN TOAN")
-                return
-            
-            s = steps.pop(0)
-            self.desc_label.config(text=s['desc'])
-
-            if s['act'] == 'WRITE_RUN':
-                # Vẽ Pass 0 giống như cũ
-                # ... (logic di chuyển từ RAM lên Output Disk)
-                self.root.after(1500, lambda: self.run_steps(steps))
-
-            elif s['act'] == 'LOAD_FOR_MERGE':
-                # Hiệu ứng: Lấy 2 run từ đĩa trên cùng bay xuống RAM
-                # Đây là lúc thuật toán "sees" các phần tử để so sánh [cite: 118]
-                self.desc_label.config(text=f"Dang lay du lieu tu Disk xuong Buffer de tron...")
-                # (Thêm logic di chuyển vật thể tại đây)
-                self.root.after(2000, lambda: self.run_steps(steps))
-
-            elif s['act'] == 'SAVE_MERGED':
-                # Hiệu ứng: Kết quả sau khi so sánh bay ngược lên vùng lưu trữ cuối cùng
-                # ... (logic di chuyển vật thể)
-                self.root.after(2000, lambda: self.run_steps(steps))
 if __name__ == "__main__":
     root = tk.Tk()
     app = FinalAnimationApp(root)
