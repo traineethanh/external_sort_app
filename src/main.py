@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
+from tkinter import filedialog
 import utils
 from algorithms import ExternalSort
 
@@ -13,19 +14,31 @@ class FinalApp:
         self.run_objs = {} # Luu cac block theo tung Run
 
     def setup_ui(self):
-        # Vẽ các vùng chức năng 
+        """Vẽ các vùng chức năng của ứng dụng gồm: Buffer disk, RAM, disk, nút """
         self.status = tk.Label(self.root, text="San sang mo phong...", font=("Arial", 11))
         self.status.pack(pady=5)
-
         self.canvas.create_rectangle(50, 20, 750, 150, outline="green", width=2) # Buffer Disk
         self.canvas.create_text(400, 10, text="Buffer Disk", font=("Arial", 12, "bold"), fill="green")
         self.canvas.create_rectangle(200, 200, 600, 320, outline="blue", width=2) # RAM Buffer
         self.canvas.create_text(400, 185, text="RAM", font=("Arial", 12, "bold"), fill="blue")
         self.canvas.create_rectangle(50, 450, 750, 580, outline="black", width=2) # Input Disk
-        self.canvas.create_text(400, 435, text="Disk", font=("Arial", 12, "bold"), fill="green")
+        self.canvas.create_text(400, 435, text="Disk", font=("Arial", 12, "bold"), fill="black")
+        
         self.status.pack()
-        tk.Button(self.root, text="BAT DAU SAP XEP", command=self.start).pack(pady=5)
+        self.btn_choose = tk.Button(self.root, text="CHON FILE TU BEN NGOAI", command=self.choose_file, bg="#F0F0F0")
+        self.btn_choose.pack(pady=5)
+        self.btn_start = tk.Button(self.root, text="BAT DAU SAP XEP", command=self.start, state="disabled")
+        self.btn_start.pack(pady=5)
 
+    def choose_file(self):
+        # Mo cua so chon file .bin
+        file_path = filedialog.askopenfilename(filetypes=[("Binary files", "*.bin"), ("All files", "*.*")])
+        
+        if file_path:
+            self.input_file = file_path # Luu duong dan file
+            self.status.config(text=f"Da chon file: {os.path.basename(file_path)}")
+            self.btn_start.config(state="normal") # Cho phep bam nut bat dau
+    
     def move_item(self, item_id, tx, ty, callback=None):
         """Di chuyen tung buoc nho de tao hieu ung animation."""
         c = self.canvas.coords(item_id)
