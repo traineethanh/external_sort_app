@@ -13,13 +13,15 @@ class FinalApp:
         self.run_objs = {} # Luu cac block theo tung Run
 
     def setup_ui(self):
-        # Vẽ các vùng chức năng theo slide [cite: 18, 44, 45]
-        self.canvas.create_rectangle(50, 20, 750, 150, outline="green", width=2) # Output Disk
+        # Vẽ các vùng chức năng 
+        self.canvas.create_rectangle(50, 20, 750, 150, outline="green", width=2) # Buffer Disk
+        self.canvas.create_text(400, 85, text="Buffer Disk", font=("Arial", 12, "bold"), fill="green")
         self.canvas.create_rectangle(200, 200, 600, 320, outline="blue", width=2) # RAM Buffer
+        self.canvas.create_text(400, 260, text="RAM", font=("Arial", 12, "bold"), fill="blue")
         self.canvas.create_rectangle(50, 450, 750, 580, outline="black", width=2) # Input Disk
-        self.status = tk.Label(self.root, text="San sang...", font=("Arial", 11))
+        self.canvas.create_text(400, 515, text="Disk", font=("Arial", 12, "bold"), fill="green")
         self.status.pack()
-        tk.Button(self.root, text="BAT DAU ANIMATION", command=self.start).pack()
+        tk.Button(self.root, text="BAT DAU SAP XEP", command=self.start).pack()
 
     def move_item(self, item_id, tx, ty, callback=None):
         """Di chuyen tung buoc nho de tao hieu ung animation."""
