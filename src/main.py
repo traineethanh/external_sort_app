@@ -25,10 +25,13 @@ class FinalApp:
         self.canvas.create_text(400, 435, text="Disk", font=("Arial", 12, "bold"), fill="black")
         
         self.status.pack()
-        self.btn_choose = tk.Button(self.root, text="CHON FILE TU BEN NGOAI", command=self.choose_file, bg="#F0F0F0")
+        self.btn_choose = tk.Button(self.root, text="CHON FILE TU BEN NGOAI", command=self.choose_file, bg="#F0F0F0").pack(pady=5)
         self.btn_choose.pack(pady=5)
         self.btn_start = tk.Button(self.root, text="BAT DAU SAP XEP", command=self.start, state="disabled")
         self.btn_start.pack(pady=5)
+
+        self.status = tk.Label(self.root, text="Vui long chon file nhi phan de bat dau", font=("Arial", 10))
+        self.status.pack(pady=5)
 
     def choose_file(self):
         # Mo cua so chon file .bin
@@ -36,8 +39,11 @@ class FinalApp:
         
         if file_path:
             self.input_file = file_path # Luu duong dan file
-            self.status.config(text=f"Da chon file: {os.path.basename(file_path)}")
+            file_name = os.path.basename(file_path)
+            self.status.config(text=f"Da chon: {file_name}", fg="green")
             self.btn_start.config(state="normal") # Cho phep bam nut bat dau
+        else:
+            self.status.config(text="Ban chua chon file nao!", fg="red")
     
     def move_item(self, item_id, tx, ty, callback=None):
         """Di chuyen tung buoc nho de tao hieu ung animation."""
@@ -119,18 +125,24 @@ class FinalApp:
             self.root.after(500, lambda: self.run_steps(steps))
 
     def start(self):
+        # Xoa canvas cu de ve moi
         self.canvas.delete("all")
         self.setup_ui()
         self.run_objs = {}
-        
-        # Neu nguoi dung chua chon file ngoai thi dung file mau
-        target_file = getattr(self, 'input_file', 'input_test.bin')
-        
+
+        # Kiem tra xem da co file duoc chon chua
+        if hasattr(self, 'input_file'):
+            target = self.input_file
+        else:
+            # Neu chua chon thi tu tao file mau de tranh loi
+            utils.create_sample_binary()
+            target = "input_test.bin"
+
         try:
-            steps = self.sorter.get_full_animation_steps(target_file)
+            steps = self.sorter.get_full_animation_steps(target)
             self.run_steps(steps)
         except Exception as e:
-            messagebox.showerror("Loi", f"Khong the doc file: {str(e)}")
+            messagebox.showerror("Loi", f"Khong the xu ly tap tin: {str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk(); app = FinalApp(root); root.mainloop()
