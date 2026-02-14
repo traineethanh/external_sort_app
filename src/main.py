@@ -119,10 +119,18 @@ class FinalApp:
             self.root.after(500, lambda: self.run_steps(steps))
 
     def start(self):
-        self.canvas.delete("all"); self.setup_ui(); self.run_objs = {}
-        utils.create_sample_binary()
-        steps = self.sorter.get_full_animation_steps("input_test.bin")
-        self.run_steps(steps)
+        self.canvas.delete("all")
+        self.setup_ui()
+        self.run_objs = {}
+        
+        # Neu nguoi dung chua chon file ngoai thi dung file mau
+        target_file = getattr(self, 'input_file', 'input_test.bin')
+        
+        try:
+            steps = self.sorter.get_full_animation_steps(target_file)
+            self.run_steps(steps)
+        except Exception as e:
+            messagebox.showerror("Loi", f"Khong the doc file: {str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk(); app = FinalApp(root); root.mainloop()
