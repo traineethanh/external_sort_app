@@ -1,55 +1,59 @@
 import tkinter as tk
-from tkinter import messagebox
-from tkinter import filedialog
+from tkinter import messagebox, filedialog
+import os  # Them thu vien nay de lay ten file
 import utils
 from algorithms import ExternalSort
 
 class FinalApp:
     def __init__(self, root):
         self.root = root
+        self.root.title("UIT - External Sort Animation")
         self.canvas = tk.Canvas(root, width=800, height=600, bg="white")
         self.canvas.pack()
+        
+        # Khoi tao cac thanh phan UI
         self.setup_ui()
+        
         self.sorter = ExternalSort()
-        self.run_objs = {} # Luu cac block theo tung Run
+        self.run_objs = {} 
 
     def setup_ui(self):
-        """Vẽ các vùng chức năng của ứng dụng gồm: Buffer disk, RAM, disk, nút """
-        self.status = tk.Label(self.root, text="San sang mo phong...", font=("Arial", 11))
-        self.status.pack(pady=5)
-        self.canvas.create_rectangle(50, 20, 750, 150, outline="green", width=2) # Buffer Disk
+        # 1. Vẽ các vùng chức năng (Vẽ trước để nằm dưới)
+        self.canvas.create_rectangle(50, 20, 750, 150, outline="green", width=2)
         self.canvas.create_text(400, 10, text="Buffer Disk", font=("Arial", 12, "bold"), fill="green")
-        self.canvas.create_rectangle(200, 200, 600, 320, outline="blue", width=2) # RAM Buffer
-        self.canvas.create_text(400, 185, text="RAM", font=("Arial", 12, "bold"), fill="blue")
-        self.canvas.create_rectangle(50, 450, 750, 580, outline="black", width=2) # Input Disk
-        self.canvas.create_text(400, 435, text="Disk", font=("Arial", 12, "bold"), fill="black")
         
-        self.status.pack()
-        self.btn_choose = tk.Button(self.root, text="CHON FILE TU BEN NGOAI", command=self.choose_file, bg="#F0F0F0").pack(pady=5)
+        self.canvas.create_rectangle(200, 200, 600, 320, outline="blue", width=2)
+        self.canvas.create_text(400, 185, text="RAM", font=("Arial", 12, "bold"), fill="blue")
+        
+        self.canvas.create_rectangle(50, 450, 750, 580, outline="black", width=2)
+        self.canvas.create_text(400, 435, text="Disk", font=("Arial", 12, "bold"), fill="black")
+
+        # 2. Tạo Label trạng thái (Chỉ tạo 1 lần duy nhất)
+        if not hasattr(self, 'status'):
+            self.status = tk.Label(self.root, text="Vui long chon file nhi phan de bat dau", font=("Arial", 10))
+            self.status.pack(pady=5)
+
+        # 3. Nút chọn file
+        self.btn_choose = tk.Button(self.root, text="CHON FILE TU BEN NGOAI", command=self.choose_file, bg="#F0F0F0")
         self.btn_choose.pack(pady=5)
-        self.btn_start = tk.Button(self.root, text="BAT DAU SAP XEP", command=self.start, state="disabled")
+
+        # 4. Nút bắt đầu (Lưu biến để có thể bật/tắt state)
+        self.btn_start = tk.Button(self.root, text="BAT DAU SAP XEP", command=self.start, state="disabled", bg="#0078D7", fg="white")
         self.btn_start.pack(pady=5)
 
-        self.status = tk.Label(self.root, text="Vui long chon file nhi phan de bat dau", font=("Arial", 10))
-        self.status.pack(pady=5)
-
     def choose_file(self):
-        # Mo cua so chon file .bin
         file_path = filedialog.askopenfilename(filetypes=[("Binary files", "*.bin"), ("All files", "*.*")])
-        
         if file_path:
-            self.input_file = file_path # Luu duong dan file
+            self.input_file = file_path 
             file_name = os.path.basename(file_path)
             self.status.config(text=f"Da chon: {file_name}", fg="green")
-            self.btn_start.config(state="normal") # Cho phep bam nut bat dau
+            self.btn_start.config(state="normal") # Kich hoat nut bam
         else:
             self.status.config(text="Ban chua chon file nao!", fg="red")
     
     def move_item(self, item_id, tx, ty, callback=None):
-        """Di chuyen tung buoc nho de tao hieu ung animation."""
         c = self.canvas.coords(item_id)
         if not c: return
-        # Chia nho quang duong thanh 15 buoc 
         steps_count = 15
         dx, dy = (tx - c[0]) / steps_count, (ty - c[1]) / steps_count
         
@@ -63,7 +67,7 @@ class FinalApp:
 
     def run_steps(self, steps):
         if not steps:
-            self.status.config(text="DA XONG HOAN TOAN!")
+            self.status.config(text="DA XONG HOAN TOAN!", fg="blue")
             return
         
         s = steps.pop(0)
@@ -102,7 +106,7 @@ class FinalApp:
             self.root.after(1200, lambda: self.run_steps(steps))
 
         elif s['act'] == 'LOAD_FOR_MERGE':
-            # Gom cac khoi tu Disk ve RAM de tron [cite: 118, 135]
+            # Gom cac khoi tu Disk ve RAM de tron
             self.ram_objs = self.run_objs[s['r1_idx']] + self.run_objs[s['r2_idx']]
             for i, (r, t) in enumerate(self.ram_objs):
                 self.move_item(r, 210+i*40, 220)
@@ -111,32 +115,31 @@ class FinalApp:
             self.root.after(1500, lambda: self.run_steps(steps))
 
         elif s['act'] == 'SAVE_MERGED':
-            # Ghi ket qua dải màu xanh lá len Disk [cite: 589]
             for i, (r, t) in enumerate(self.ram_objs):
                 self.canvas.itemconfig(t, text=str(int(s['values'][i])))
                 tx = 150 + i*50
                 self.move_item(r, tx, 50)
                 self.move_item(t, tx+22, 72)
                 self.canvas.itemconfig(r, fill="#32CD32")
-            self.run_objs = {0: self.ram_objs} # Cap nhat de Pass sau dung tiep
+            self.run_objs = {0: self.ram_objs} 
             self.root.after(1500, lambda: self.run_steps(steps))
         
         else: # SKIP_LE
             self.root.after(500, lambda: self.run_steps(steps))
 
     def start(self):
-        # Xoa canvas cu de ve moi
+        # Khong xoa tat ca component, chi xoa hinh ve tren canvas
         self.canvas.delete("all")
-        self.setup_ui()
+        # Ve lai cac khung Disk/RAM
+        self.canvas.create_rectangle(50, 20, 750, 150, outline="green", width=2)
+        self.canvas.create_text(400, 10, text="Buffer Disk", font=("Arial", 12, "bold"), fill="green")
+        self.canvas.create_rectangle(200, 200, 600, 320, outline="blue", width=2)
+        self.canvas.create_text(400, 185, text="RAM", font=("Arial", 12, "bold"), fill="blue")
+        self.canvas.create_rectangle(50, 450, 750, 580, outline="black", width=2)
+        self.canvas.create_text(400, 435, text="Disk", font=("Arial", 12, "bold"), fill="black")
+        
         self.run_objs = {}
-
-        # Kiem tra xem da co file duoc chon chua
-        if hasattr(self, 'input_file'):
-            target = self.input_file
-        else:
-            # Neu chua chon thi tu tao file mau de tranh loi
-            utils.create_sample_binary()
-            target = "input_test.bin"
+        target = getattr(self, 'input_file', 'input_test.bin')
 
         try:
             steps = self.sorter.get_full_animation_steps(target)
@@ -145,4 +148,6 @@ class FinalApp:
             messagebox.showerror("Loi", f"Khong the xu ly tap tin: {str(e)}")
 
 if __name__ == "__main__":
-    root = tk.Tk(); app = FinalApp(root); root.mainloop()
+    root = tk.Tk()
+    app = FinalApp(root)
+    root.mainloop()
