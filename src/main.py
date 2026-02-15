@@ -64,11 +64,30 @@ class ExternalSortApp:
         self.load_simulation(path)
 
     def load_simulation(self, path):
-        self.reset_all()
-        self.all_steps = self.engine.get_simulation_steps(path)
-        self.current_step_idx = -1
-        self.btn_next.config(state="normal")
-        self.status.config(text=f"Đã nạp file: {os.path.basename(path)}")
+        # Đọc dữ liệu từ file để kiểm tra số lượng phần tử
+        data = utils.read_binary_file(path)
+        count = len(data)
+
+        if count <= 12:
+            # TH1: Dữ liệu nhỏ (<= 12) -> Thực hiện mô phỏng trên Canvas
+            self.reset_all()
+            self.all_steps = self.engine.get_simulation_steps(path)
+            self.current_step_idx = -1
+            self.btn_next.config(state="normal")
+            self.status.config(text=f"File có {count} phần tử. Sẵn sàng mô phỏng.", fg="blue")
+        else:
+            # TH2: Dữ liệu lớn (> 12) -> Chạy thuật toán ngầm và xuất kết quả luôn
+            self.reset_all()
+            self.status.config(text=f"File quá lớn ({count} phần tử). Đang xử lý ngầm...", fg="orange")
+            
+            # Thực hiện sắp xếp thực tế và ghi file kết quả
+            sorted_data = sorted(data) # Trong đồ án thật bạn sẽ gọi hàm sắp xếp ngoại thực tế ở đây
+            output_path = "output_result.bin"
+            utils.write_binary_file(output_path, sorted_data)
+            
+            messagebox.showinfo("Thông báo", 
+                f"Kết quả đã được xuất trực tiếp ra file: {output_path}")
+            self.status.config(text=f"Đã xuất kết quả file lớn ra {output_path}", fg="green")
 
     def step_next(self):
         if self.current_step_idx < len(self.all_steps) - 1:
