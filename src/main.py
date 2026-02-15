@@ -117,12 +117,12 @@ class ExternalSortApp:
         if not self.input_file_path: return
         
         self.all_steps = self.engine.get_simulation_steps(self.input_file_path)
-        
+
         if len(self.all_steps) > 0:
-        self.current_step_idx = -1
-        self.btn_next.config(state="normal") # Kích hoạt nút Next
-        self.btn_start_sort.config(state="disabled") # Tắt nút Bắt đầu để tránh bấm trùng
-        self.step_next()
+            self.current_step_idx = -1
+            self.btn_next.config(state="normal") # Kích hoạt nút Next
+            self.btn_start_sort.config(state="disabled") # Tắt nút Bắt đầu để tránh bấm trùng
+            self.step_next()
 
         data = utils.read_binary_file(self.input_file_path)
         if len(data) <= 12:
