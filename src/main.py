@@ -175,7 +175,7 @@ class ExternalSortApp:
         act = step['act']
         
         if act == 'INIT_DISK':
-        pass
+            pass
 
         if act == 'READ':
             for i in range(len(step['values'])):
