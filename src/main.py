@@ -133,7 +133,36 @@ class ExternalSortApp:
         self.setup_ui()
 
     def export_result(self):
-        messagebox.showinfo("Export", "Kết quả đã được ghi vào file output.bin")
+        # 1. Kiểm tra xem đã có dữ liệu sắp xếp chưa
+        if self.current_step_idx < len(self.all_steps) - 1:
+            messagebox.showwarning("Cảnh báo", "Quá trình sắp xếp chưa kết thúc!")
+            return
+
+        # 2. Lấy kết quả cuối cùng từ bước cuối cùng của Engine
+        final_step = self.all_steps[-1]
+        if 'values' in final_step:
+            sorted_data = final_step['values']
+            output_path = "sorted_output.bin"
+            
+            # 3. Ghi file nhị phân 8-byte [cite: 17]
+            utils.write_binary_file(output_path, sorted_data)
+            
+            # 4. Tạo chuỗi hiển thị danh sách số
+            result_str = "\n".join([f"Phần tử {i+1}: {val:.2f}" for i, val in enumerate(sorted_data)])
+            
+            # 5. Hiển thị lên màn hình bằng messagebox hoặc cửa sổ mới
+            result_window = tk.Toplevel(self.root)
+            result_window.title("Kết quả sắp xếp cuối cùng")
+            result_window.geometry("300x400")
+            
+            txt = tk.Text(result_window, font=("Arial", 11))
+            txt.insert("1.0", f"Đã xuất file: {output_path}\n")
+            txt.insert("insert", "-"*30 + "\n")
+            txt.insert("insert", result_str)
+            txt.config(state="disabled") # Không cho sửa
+            txt.pack(padx=10, pady=10, fill="both", expand=True)
+            
+            messagebox.showinfo("Thành công", f"Đã xuất kết quả ra file {output_path}")
 
 if __name__ == "__main__":
     root = tk.Tk()
