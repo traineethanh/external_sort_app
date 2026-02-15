@@ -36,11 +36,27 @@ class FinalApp:
         # 3. Nút chọn file
         self.btn_choose = tk.Button(self.root, text="CHON FILE TU BEN NGOAI", command=self.choose_file, bg="#F0F0F0")
         self.btn_choose.pack(pady=5)
-
-        # 4. Nút bắt đầu (Lưu biến để có thể bật/tắt state)
+        # 4. Nút tạo file ngẫu nhiên
+        self.btn_random = tk.Button(self.root, text="TAO FILE 12 SO NGAU NHIEN", 
+                                   command=self.generate_random_file, bg="#E1E1E1")
+        self.btn_random.pack(pady=5)
+        # 5. Nút bắt đầu (Lưu biến để có thể bật/tắt state)
         self.btn_start = tk.Button(self.root, text="BAT DAU SAP XEP", command=self.start, state="disabled", bg="#0078D7", fg="white")
         self.btn_start.pack(pady=5)
 
+        if not hasattr(self, 'status'):
+            self.status = tk.Label(self.root, text="Vui long tao file hoac chon file", font=("Arial", 10))
+            self.status.pack(pady=5)
+    
+    def generate_random_file(self):
+        # Gọi hàm từ utils
+        file_path = utils.create_random_input("input_test.bin", 12)
+        self.input_file = file_path
+        
+        # Thông báo và kích hoạt nút bắt đầu
+        self.status.config(text="Da tao file 'input_test.bin' voi 12 so ngẫu nhiên", fg="blue")
+        self.btn_start.config(state="normal")
+        
     def choose_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("Binary files", "*.bin"), ("All files", "*.*")])
         if file_path:
