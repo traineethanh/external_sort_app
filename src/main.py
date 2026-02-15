@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, filedialog
-import os  # Them thu vien nay de lay ten file
+import os
 import utils
 from algorithms import ExternalSort
 
@@ -8,53 +8,53 @@ class FinalApp:
     def __init__(self, root):
         self.root = root
         self.root.title("UIT - External Sort Animation")
-        self.canvas = tk.Canvas(root, width=800, height=600, bg="white")
+        
+        # 1. Khoi tao thanh phan UI co dinh (Label, Button)
+        self.init_static_ui()
+        
+        # 2. Khoi tao Canvas de ve mo phong
+        self.canvas = tk.Canvas(root, width=800, height=500, bg="white")
         self.canvas.pack()
         
-        # Khoi tao cac thanh phan UI
-        self.setup_ui()
+        # 3. Ve cac khung vung nho ban dau
+        self.draw_base_layout()
         
         self.sorter = ExternalSort()
         self.run_objs = {} 
 
-    def setup_ui(self):
-        # 1. Vẽ các vùng chức năng (Vẽ trước để nằm dưới)
-        self.canvas.create_rectangle(50, 20, 750, 150, outline="green", width=2)
-        self.canvas.create_text(400, 10, text="Buffer Disk", font=("Arial", 12, "bold"), fill="green")
-        
-        self.canvas.create_rectangle(200, 200, 600, 320, outline="blue", width=2)
-        self.canvas.create_text(400, 185, text="RAM", font=("Arial", 12, "bold"), fill="blue")
-        
-        self.canvas.create_rectangle(50, 450, 750, 580, outline="black", width=2)
-        self.canvas.create_text(400, 435, text="Disk", font=("Arial", 12, "bold"), fill="black")
+    def init_static_ui(self):
+        """Khoi tao cac nut bam va nhan trang thai (Chi goi 1 lan duy nhat)"""
+        self.status = tk.Label(self.root, text="Vui long tao file hoac chon file de bat dau", font=("Arial", 10))
+        self.status.pack(pady=5)
 
-        # 2. Tạo Label trạng thái (Chỉ tạo 1 lần duy nhất)
-        if not hasattr(self, 'status'):
-            self.status = tk.Label(self.root, text="Vui long chon file nhi phan de bat dau", font=("Arial", 10))
-            self.status.pack(pady=5)
-
-        # 3. Nút chọn file
         self.btn_choose = tk.Button(self.root, text="CHON FILE TU BEN NGOAI", command=self.choose_file, bg="#F0F0F0")
-        self.btn_choose.pack(pady=5)
-        # 4. Nút tạo file ngẫu nhiên
-        self.btn_random = tk.Button(self.root, text="TAO FILE 12 SO NGAU NHIEN", 
-                                   command=self.generate_random_file, bg="#E1E1E1")
-        self.btn_random.pack(pady=5)
-        # 5. Nút bắt đầu (Lưu biến để có thể bật/tắt state)
+        self.btn_choose.pack(pady=2)
+
+        self.btn_random = tk.Button(self.root, text="TAO FILE 12 SO NGAU NHIEN", command=self.generate_random_file, bg="#E1E1E1")
+        self.btn_random.pack(pady=2)
+
         self.btn_start = tk.Button(self.root, text="BAT DAU SAP XEP", command=self.start, state="disabled", bg="#0078D7", fg="white")
         self.btn_start.pack(pady=5)
 
-        if not hasattr(self, 'status'):
-            self.status = tk.Label(self.root, text="Vui long tao file hoac chon file", font=("Arial", 10))
-            self.status.pack(pady=5)
-    
+    def draw_base_layout(self):
+        """Ve cac khung hinh chu nhat tren Canvas"""
+        self.canvas.delete("all")
+        # Buffer Disk (Output)
+        self.canvas.create_rectangle(50, 20, 750, 150, outline="green", width=2)
+        self.canvas.create_text(400, 10, text="Buffer Disk", font=("Arial", 12, "bold"), fill="green")
+        
+        # RAM
+        self.canvas.create_rectangle(200, 180, 600, 300, outline="blue", width=2)
+        self.canvas.create_text(400, 165, text="RAM", font=("Arial", 12, "bold"), fill="blue")
+        
+        # Disk (Input)
+        self.canvas.create_rectangle(50, 350, 750, 480, outline="black", width=2)
+        self.canvas.create_text(400, 335, text="Disk", font=("Arial", 12, "bold"), fill="black")
+
     def generate_random_file(self):
-        # Gọi hàm từ utils
         file_path = utils.create_random_input("input_test.bin", 12)
         self.input_file = file_path
-        
-        # Thông báo và kích hoạt nút bắt đầu
-        self.status.config(text="Da tao file 'input_test.bin' voi 12 so ngẫu nhiên", fg="blue")
+        self.status.config(text="Da tao file 'input_test.bin' voi 12 so ngau nhien", fg="blue")
         self.btn_start.config(state="normal")
         
     def choose_file(self):
@@ -63,7 +63,7 @@ class FinalApp:
             self.input_file = file_path 
             file_name = os.path.basename(file_path)
             self.status.config(text=f"Da chon: {file_name}", fg="green")
-            self.btn_start.config(state="normal") # Kich hoat nut bam
+            self.btn_start.config(state="normal")
         else:
             self.status.config(text="Ban chua chon file nao!", fg="red")
     
@@ -92,8 +92,9 @@ class FinalApp:
         if s['act'] == 'INIT_DISK':
             self.data_objs = []
             for i, v in enumerate(s['values']):
-                r = self.canvas.create_rectangle(70+i*55, 480, 115+i*55, 525, fill="#FFD700")
-                t = self.canvas.create_text(92+i*55, 502, text=str(int(v)))
+                # Toa do khoi vang o vung Disk (duoi cung)
+                r = self.canvas.create_rectangle(70+i*55, 380, 115+i*55, 425, fill="#FFD700")
+                t = self.canvas.create_text(92+i*55, 402, text=str(int(v)))
                 self.data_objs.append((r, t))
             self.root.after(1000, lambda: self.run_steps(steps))
 
@@ -101,8 +102,8 @@ class FinalApp:
             self.ram_objs = []
             for i in range(len(s['values'])):
                 r, t = self.data_objs[s['idx'] + i]
-                self.move_item(r, 220+i*100, 220)
-                self.move_item(t, 242+i*100, 242)
+                self.move_item(r, 220+i*100, 200)
+                self.move_item(t, 242+i*100, 222)
                 self.ram_objs.append((r, t))
             self.root.after(1200, lambda: self.run_steps(steps))
 
@@ -122,11 +123,10 @@ class FinalApp:
             self.root.after(1200, lambda: self.run_steps(steps))
 
         elif s['act'] == 'LOAD_FOR_MERGE':
-            # Gom cac khoi tu Disk ve RAM de tron
             self.ram_objs = self.run_objs[s['r1_idx']] + self.run_objs[s['r2_idx']]
             for i, (r, t) in enumerate(self.ram_objs):
-                self.move_item(r, 210+i*40, 220)
-                self.move_item(t, 232+i*40, 242)
+                self.move_item(r, 210+i*40, 200)
+                self.move_item(t, 232+i*40, 222)
                 self.canvas.itemconfig(r, fill="#FF6347")
             self.root.after(1500, lambda: self.run_steps(steps))
 
@@ -140,20 +140,12 @@ class FinalApp:
             self.run_objs = {0: self.ram_objs} 
             self.root.after(1500, lambda: self.run_steps(steps))
         
-        else: # SKIP_LE
+        else:
             self.root.after(500, lambda: self.run_steps(steps))
 
     def start(self):
-        # Khong xoa tat ca component, chi xoa hinh ve tren canvas
-        self.canvas.delete("all")
-        # Ve lai cac khung Disk/RAM
-        self.canvas.create_rectangle(50, 20, 750, 150, outline="green", width=2)
-        self.canvas.create_text(400, 10, text="Buffer Disk", font=("Arial", 12, "bold"), fill="green")
-        self.canvas.create_rectangle(200, 200, 600, 320, outline="blue", width=2)
-        self.canvas.create_text(400, 185, text="RAM", font=("Arial", 12, "bold"), fill="blue")
-        self.canvas.create_rectangle(50, 450, 750, 580, outline="black", width=2)
-        self.canvas.create_text(400, 435, text="Disk", font=("Arial", 12, "bold"), fill="black")
-        
+        # Chi ve lai layout canvas, khong tao lai nut bam
+        self.draw_base_layout()
         self.run_objs = {}
         target = getattr(self, 'input_file', 'input_test.bin')
 

@@ -1,17 +1,6 @@
 import utils
-import struct
-import random
 
 class ExternalSort:
-    def create_random_input(file_path="input_test.bin", n=12):
-    # Tạo danh sách 12 số thực ngẫu nhiên từ 1 đến 100
-    numbers = [round(random.uniform(1, 100), 2) for _ in range(n)]
-    
-    with open(file_path, 'wb') as f:
-        for val in numbers:
-            f.write(struct.pack('d', val))
-    return file_path
-    
     def get_full_animation_steps(self, input_file):
         """Ghi lai moi hanh dong de main.py dien hoa animation."""
         data = utils.read_binary_file(input_file)
@@ -25,7 +14,7 @@ class ExternalSort:
         all_runs = []
         for i in range(0, len(data), run_size):
             chunk = data[i:i + run_size]
-            steps.append({'act': 'READ', 'values': chunk, 'idx': i, 'desc': "Doc du lieu vao RAM"})
+            steps.append({'act': 'READ', 'values': chunk, 'idx': i, 'desc': "Pass 0: Doc du lieu vao RAM"})
             sorted_chunk = sorted(chunk)
             steps.append({'act': 'SORT', 'values': sorted_chunk, 'desc': "Sap xep trong RAM"})
             all_runs.append(sorted_chunk)
