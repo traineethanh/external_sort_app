@@ -2,15 +2,13 @@ import utils
 
 class ExternalSort:
     def get_full_animation_steps(self, input_file):
-        """Ghi lai moi hanh dong de main.py dien hoa animation."""
         data = utils.read_binary_file(input_file)
-        run_size = 4 
+        run_size = 4  # Moi run co 4 phan tu
         steps = []
         
-        # --- INIT DISK ---
         steps.append({'act': 'INIT_DISK', 'values': data, 'desc': "Khoi tao du lieu tren Disk"})
 
-        # --- PASS 0: Tao Runs ---
+        # --- PASS 0: Tao Runs ban dau ---
         all_runs = []
         for i in range(0, len(data), run_size):
             chunk = data[i:i + run_size]
@@ -18,9 +16,9 @@ class ExternalSort:
             sorted_chunk = sorted(chunk)
             steps.append({'act': 'SORT', 'values': sorted_chunk, 'desc': "Sap xep trong RAM"})
             all_runs.append(sorted_chunk)
-            steps.append({'act': 'WRITE_RUN', 'values': sorted_chunk, 'run_idx': len(all_runs)-1, 'desc': f"Ghi Run {len(all_runs)-1} xuong Disk"})
+            steps.append({'act': 'WRITE_RUN', 'values': sorted_chunk, 'run_idx': len(all_runs)-1, 'desc': f"Ghi Run {len(all_runs)-1}"})
 
-        # --- MERGE PASSES: Tron den khi xong ---
+        # --- MERGE PASSES: Tron den khi chi con 1 file duy nhat ---
         pass_idx = 1
         while len(all_runs) > 1:
             new_runs = []
@@ -31,11 +29,12 @@ class ExternalSort:
                     steps.append({'act': 'LOAD_FOR_MERGE', 'r1_idx': i, 'r2_idx': i+1, 'desc': f"Pass {pass_idx}: Tron Run {i} va {i+1}"})
                     merged = sorted(r1 + r2)
                     new_runs.append(merged)
-                    steps.append({'act': 'SAVE_MERGED', 'values': merged, 'desc': f"Ket qua Pass {pass_idx}"})
+                    steps.append({'act': 'SAVE_MERGED', 'values': merged, 'desc': f"Hoan tat Pass {pass_idx}"})
                     i += 2
                 else:
+                    # Xu ly Run le ben phai
                     new_runs.append(all_runs[i])
-                    steps.append({'act': 'SKIP_LE', 'run_idx': i, 'desc': f"Run {i} le, cho de tron o Pass tiep theo"})
+                    steps.append({'act': 'SKIP_LE', 'run_idx': i, 'desc': f"Run {i} le, cho de tron o Pass sau"})
                     i += 1
             all_runs = new_runs
             pass_idx += 1
