@@ -153,10 +153,48 @@ class ExternalSortApp:
         self.data_blocks = [self.create_block(70+(i%4)*85, 50+(i//4)*50, v) for i, v in enumerate(data)]
 
     def export_result(self):
-        if self.current_step_idx == len(self.all_steps) - 1:
-            messagebox.showinfo("Kết quả", "Đã xuất file sorted_output.bin")
-        else:
-            messagebox.showwarning("Chú ý", "Bạn chưa hoàn thành sắp xếp!")
+        # 1. Kiểm tra xem quá trình mô phỏng đã đi đến bước cuối cùng chưa
+        if self.current_step_idx < len(self.all_steps) - 1:
+            messagebox.showwarning("Thông báo", "Vui lòng đợi hoặc bấm 'Next' cho đến khi sắp xếp xong hoàn toàn!")
+            return
+
+        # 2. Lấy dữ liệu đã sắp xếp từ bước cuối cùng (Final Run)
+        final_step = self.all_steps[-1]
+        sorted_data = final_step.get('values', [])
+
+        if not sorted_data:
+            messagebox.showerror("Lỗi", "Không tìm thấy dữ liệu sau sắp xếp.")
+            return
+
+        # 3. Xuất file nhị phân (.bin) - Sử dụng hàm write_binary_file từ utils
+        output_filename = "sorted_output.bin"
+        try:
+            utils.write_binary_file(output_filename, sorted_data)
+        except Exception as e:
+            messagebox.showerror("Lỗi Ghi File", f"Không thể ghi file: {e}")
+            return
+
+        # 4. Hiển thị kết quả lên màn hình (Dưới dạng text số)
+        result_window = tk.Toplevel(self.root)
+        result_window.title("Kết quả Output .bin")
+        result_window.geometry("350x450")
+
+        header = tk.Label(result_window, text=f"File: {output_filename}", font=("Arial", 11, "bold"), pady=10)
+        header.pack()
+
+        # Khung chứa văn bản danh sách số
+        txt_area = tk.Text(result_window, font=("Consolas", 10), padx=10, pady=10)
+        txt_area.pack(fill="both", expand=True)
+
+        # Ghi danh sách số vào khung text
+        content = "--- DANH SÁCH ĐÃ SẮP XẾP ---\n\n"
+        for i, val in enumerate(sorted_data):
+            content += f" [{i+1:02d}] : {val:.2f}\n" # Định dạng số thực 2 chữ số thập phân
+        
+        txt_area.insert("1.0", content)
+        txt_area.config(state="disabled") # Khóa không cho chỉnh sửa nội dung
+
+        messagebox.showinfo("Thành công", f"Đã xuất file {output_filename} thành công!")
 
 if __name__ == "__main__":
     root = tk.Tk(); app = ExternalSortApp(root); root.mainloop()
