@@ -7,7 +7,7 @@ class ExternalSortEngine:
     def get_simulation_steps(self, input_file):
         data = utils.read_binary_file(input_file)
         steps = []
-        io_cost = 0  # Chi phí I/O tích lũy [cite: 19, 359]
+        io_cost = 0  # Chi phí I/O tích lũy 
         
         # --- BƯỚC 0: KHỞI TẠO DISK ---
         steps.append({
