@@ -14,60 +14,57 @@ class ExternalSortApp:
         self.canvas = tk.Canvas(root, width=900, height=520, bg="white", highlightthickness=1, highlightbackground="#D3D3D3")
         self.canvas.pack(pady=10)
         
-        self.engine = ExternalSortEngine()
+        # Engine và biến logic
+        # self.engine = ExternalSortEngine()
         self.input_file_path = None 
         self.all_steps = []
         self.current_step_idx = -1
         self.data_blocks = [] 
         self.io_cost = 0
         
-        # 1. TẠO UI CỐ ĐỊNH (Chỉ chạy 1 lần)
-        self.create_controls() 
+        # --- BƯỚC QUAN TRỌNG ---
+        self.create_controls()      # Tạo nút bấm (Chỉ chạy 1 lần)
+        self.draw_static_frames()   # Vẽ khung nền lên canvas
+
+    def draw_static_frames(self):
+        """Chỉ vẽ khung Disk và RAM, dùng khi Reset hoặc Back"""
+        self.canvas.delete("all") 
+        # Disk Storage (Xanh dương)
+        self.canvas.create_rectangle(50, 30, 400, 500, outline="#0056b3", width=2)
+        self.canvas.create_text(225, 15, text="DISK STORAGE", font=("Arial", 12, "bold"), fill="#0056b3")
         
-        # 2. VẼ CÁC KHUNG TRÊN CANVAS
-        self.setup_canvas_frames()
+        # RAM Buffer (Xanh lá)
+        self.canvas.create_rectangle(500, 30, 850, 250, outline="#28a745", width=2)
+        self.canvas.create_text(675, 15, text="RAM (3 BUFFER PAGES)", font=("Arial", 12, "bold"), fill="#28a745")
 
     def create_controls(self):
-        """Khởi tạo các nút bấm và nhãn - Chỉ gọi 1 lần trong __init__"""
-        self.control_frame = tk.Frame(self.root)
-        self.control_frame.pack(pady=5)
+        """Tạo các widget điều khiển phía dưới canvas (Chỉ gọi 1 lần)"""
+        control_frame = tk.Frame(self.root)
+        control_frame.pack(pady=5)
 
         # Hàng 1
-        tk.Button(self.control_frame, text="Chọn File (.bin)", width=15, command=self.choose_file).grid(row=0, column=0, padx=5, pady=5)
-        tk.Button(self.control_frame, text="Tạo File Ngẫu Nhiên", width=15, command=self.gen_random).grid(row=0, column=1, padx=5, pady=5)
-        tk.Button(self.control_frame, text="Reset", width=15, command=self.reset_all, bg="#FFCDD2").grid(row=0, column=2, padx=5, pady=5)
+        tk.Button(control_frame, text="Chọn File (.bin)", width=15, command=self.choose_file).grid(row=0, column=0, padx=5, pady=5)
+        tk.Button(control_frame, text="Tạo File Ngẫu Nhiên", width=15, command=self.gen_random).grid(row=0, column=1, padx=5, pady=5)
+        tk.Button(control_frame, text="Reset", width=15, command=self.reset_all, bg="#FFCDD2").grid(row=0, column=2, padx=5, pady=5)
 
         # Hàng 2
-        self.btn_back = tk.Button(self.control_frame, text="<< Back", width=10, command=self.step_back, state="disabled")
+        self.btn_back = tk.Button(control_frame, text="<< Back", width=10, command=self.step_back, state="disabled")
         self.btn_back.grid(row=1, column=0, padx=5, pady=5)
 
-        self.btn_start_sort = tk.Button(self.control_frame, text="BẮT ĐẦU SẮP XẾP", width=20, command=self.prepare_and_start, 
+        self.btn_start_sort = tk.Button(control_frame, text="BẮT ĐẦU SẮP XẾP", width=20, command=self.prepare_and_start, 
                                         state="disabled", bg="#BBDEFB", font=("Arial", 10, "bold"))
         self.btn_start_sort.grid(row=1, column=1, padx=5, pady=5)
         
-        self.btn_next = tk.Button(self.control_frame, text="Next >>", width=10, command=self.step_next, state="disabled")
+        self.btn_next = tk.Button(control_frame, text="Next >>", width=10, command=self.step_next, state="disabled")
         self.btn_next.grid(row=1, column=2, padx=5, pady=5)
         
-        tk.Button(self.control_frame, text="End (Xuất kết quả)", width=15, command=self.export_result, bg="#C8E6C9").grid(row=1, column=3, padx=5, pady=5)
+        tk.Button(control_frame, text="End (Xuất kết quả)", width=15, command=self.export_result, bg="#C8E6C9").grid(row=1, column=3, padx=5, pady=5)
 
-        # Thông số
+        # Thông số hiển thị
         self.lbl_io = tk.Label(self.root, text="Tổng Chi Phí I/O: 0", font=("Arial", 13, "bold"), fg="#D32F2F")
         self.lbl_io.pack()
         self.status = tk.Label(self.root, text="Bước 1: Vui lòng nạp file dữ liệu", font=("Arial", 10, "italic"), fg="#555")
         self.status.pack()
-
-    def setup_canvas_frames(self):
-        """Vẽ lại các khung hình chữ nhật trên Canvas (Gọi khi Reset/Back)"""
-        # Xóa các hình vẽ cũ nhưng KHÔNG xóa các nút bấm ở ngoài canvas
-        self.canvas.delete("all") 
-        
-        # Disk Storage
-        self.canvas.create_rectangle(50, 30, 400, 500, outline="#0056b3", width=2)
-        self.canvas.create_text(225, 15, text="DISK STORAGE", font=("Arial", 12, "bold"), fill="#0056b3")
-        
-        # RAM Buffer
-        self.canvas.create_rectangle(500, 30, 850, 250, outline="#28a745", width=2)
-        self.canvas.create_text(675, 15, text="RAM (3 BUFFER PAGES)", font=("Arial", 12, "bold"), fill="#28a745")
 
     def create_block(self, x, y, value):
         """Tạo block style xám chữ vàng cam."""
@@ -154,18 +151,21 @@ class ExternalSortApp:
             self.btn_next.config(state="disabled")
 
     def step_back(self):
+        """Quay lại bước trước mà không làm mất nút bấm"""
         if self.current_step_idx >= 0:
             target_idx = self.current_step_idx - 1
-            self.canvas.delete("all")
-            self.setup_ui() # Vẽ lại khung
-            # Nạp lại dữ liệu ban đầu
+            
+            # 1. Dọn canvas và vẽ lại khung nền
+            self.draw_static_frames()
+            
+            # 2. Nạp lại dữ liệu ban đầu lên canvas
             data = utils.read_binary_file(self.input_file_path)
             self.data_blocks = []
             for i, v in enumerate(data):
                 bx, by = 70 + (i % 4) * 85, 50 + (i // 4) * 50
                 self.data_blocks.append(self.create_block(bx, by, v))
             
-            # Chạy lại các bước đến target_idx (không dùng animation)
+            # 3. Chạy lại các bước đến target_idx (không dùng animation)
             old_steps = self.all_steps
             self.current_step_idx = -1
             for i in range(target_idx + 1):
@@ -173,7 +173,8 @@ class ExternalSortApp:
                 self.apply_step(old_steps[i], animate=False)
             
             self.btn_next.config(state="normal")
-            if self.current_step_idx < 0: self.btn_back.config(state="disabled")
+            if self.current_step_idx < 0: 
+                self.btn_back.config(state="disabled")
 
     def apply_step(self, step, animate=True):
         self.status.config(text=step['desc'])
@@ -208,13 +209,15 @@ class ExternalSortApp:
                 self.canvas.itemconfig(self.data_blocks[idx][0], fill="#2ECC71") # Đổi màu xanh lá (Đã xong Run)
 
     def reset_all(self):
-        self.canvas.delete("all")
-        self.setup_ui()
+        """Reset trạng thái và vẽ lại khung trống"""
+        self.draw_static_frames() # Chỉ vẽ lại khung, không tạo lại nút
         self.all_steps = []
         self.current_step_idx = -1
         self.input_file_path = None
         self.io_cost = 0
+        self.data_blocks = []
         self.lbl_io.config(text="Tổng Chi Phí I/O: 0")
+        self.status.config(text="Bước 1: Vui lòng nạp file dữ liệu", fg="#555")
         self.btn_next.config(state="disabled")
         self.btn_back.config(state="disabled")
         self.btn_start_sort.config(state="disabled")
