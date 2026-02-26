@@ -15,7 +15,7 @@ class ExternalSortApp:
         self.canvas.pack(pady=10)
         
         # Engine và biến logic
-        # self.engine = ExternalSortEngine()
+        self.engine = ExternalSortEngine(buffer_pages=3)
         self.input_file_path = None 
         self.all_steps = []
         self.current_step_idx = -1
@@ -215,7 +215,7 @@ class ExternalSortApp:
             # Vẽ lại toàn bộ Disk để hiển thị các Run đã trộn [cite: 461]
             # Bạn có thể dùng self.canvas.delete("all") và vẽ lại trạng thái mới
             pass
-            
+
     def reset_all(self):
         """Reset trạng thái và vẽ lại khung trống"""
         self.draw_static_frames() # Chỉ vẽ lại khung, không tạo lại nút
