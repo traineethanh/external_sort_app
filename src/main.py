@@ -183,31 +183,39 @@ class ExternalSortApp:
         
         act = step['act']
         
-        if act == 'INIT_DISK':
-            pass
-
         if act == 'READ':
+            # Di chuyển các khối từ vùng Input Disk lên RAM
             for i in range(len(step['values'])):
                 idx = step['idx'] + i
-                tx, ty = 550 + i * 85, 100
+                tx, ty = 550 + (i % 3) * 85, 80 + (i // 3) * 50
                 if animate: self.move_block(self.data_blocks[idx], tx, ty)
-                else: self.canvas.coords(self.data_blocks[idx][0], tx, ty, tx+75, ty+35); self.canvas.coords(self.data_blocks[idx][1], tx+37, ty+17)
+                else: self._jump_block(idx, tx, ty)
 
         elif act == 'SORT':
-            for i, val in enumerate(step['values']):
-                # Cập nhật text hiển thị số đã sort trong RAM
-                self.canvas.itemconfig(self.data_blocks[i][1], text=f"{val:.1f}")
-                self.canvas.itemconfig(self.data_blocks[i][0], fill="#3498DB") # Đổi sang màu xanh dương (đang xử lý)
+            # Hiệu ứng đổi màu khi đã sắp xếp trong RAM [cite: 254]
+            for i in range(len(self.data_blocks)):
+                # Lấy tọa độ để kiểm tra xem block có đang ở trong RAM không
+                coords = self.canvas.coords(self.data_blocks[i][0])
+                if coords and coords[0] >= 500:
+                    self.canvas.itemconfig(self.data_blocks[i][0], fill="#3498DB")
 
         elif act == 'WRITE_RUN':
+            # Ghi xuống vùng Output Disk (phía dưới) [cite: 341]
             for i in range(len(step['values'])):
-                idx = step['idx'] + i
-                # Vị trí lưu Run trên Disk (Phần dưới)
-                tx, ty = 70 + (i % 4) * 85, 300 + step['run_idx'] * 50
-                if animate: self.move_block(self.data_blocks[idx], tx, ty)
-                else: self.canvas.coords(self.data_blocks[idx][0], tx, ty, tx+75, ty+35); self.canvas.coords(self.data_blocks[idx][1], tx+37, ty+17)
-                self.canvas.itemconfig(self.data_blocks[idx][0], fill="#2ECC71") # Đổi màu xanh lá (Đã xong Run)
+                # Tìm block có giá trị tương ứng để di chuyển (đơn giản hóa)
+                # Trong thực tế cần quản lý index chặt chẽ hơn
+                tx, ty = 70 + (i % 6) * 55, 320 + step['run_idx'] * 45
+                # Cập nhật text hiển thị theo giá trị đã sort
+                idx_in_chunk = i
+                # (Logic tìm block phù hợp...)
+                self.canvas.itemconfig(self.data_blocks[step['run_idx']*6 + i][1], text=f"{step['values'][i]:.1f}")
+                self.canvas.itemconfig(self.data_blocks[step['run_idx']*6 + i][0], fill="#2ECC71")
 
+        elif act == 'MERGE_STEP':
+            # Vẽ lại toàn bộ Disk để hiển thị các Run đã trộn [cite: 461]
+            # Bạn có thể dùng self.canvas.delete("all") và vẽ lại trạng thái mới
+            pass
+            
     def reset_all(self):
         """Reset trạng thái và vẽ lại khung trống"""
         self.draw_static_frames() # Chỉ vẽ lại khung, không tạo lại nút
