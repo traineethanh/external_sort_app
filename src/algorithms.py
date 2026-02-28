@@ -22,6 +22,7 @@ class ExternalSortEngine:
             chunk_indices = list(range(i, min(i + 6, N)))
             io_cost += math.ceil(len(chunk) / self.page_size)
             
+            sorted_chunk = sorted(chunk)
             steps.append({'act': 'LOAD_RAM', 'values': chunk, 'indices': chunk_indices, 'io_cost': io_cost, 'desc': "Nạp dữ liệu vào RAM."})
             
             sorted_chunk = sorted(chunk)

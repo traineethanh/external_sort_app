@@ -122,34 +122,23 @@ class ExternalSortApp:
         
         act = step['act']
 
-        # --- GIAI ĐOẠN 1: TẠO RUN ---
+        # --- GIAI ĐOẠN 0: TẠO RUN (Từ Input Disk -> RAM) ---
         if act == 'LOAD_RAM':
-            # Xóa số lẻ trên disk theo index
+            # 1. Xóa số lẻ ở Input Area (Đã có logic ở phiên bản trước)
             indices = step.get('indices', [])
             for idx in indices:
                 if self.raw_data_texts[idx]:
                     self.canvas.delete(self.raw_data_texts[idx])
                     self.raw_data_texts[idx] = None
             
+            # 2. Tạo block mới trong RAM
             vals = step['values']
             for i in range(0, len(vals), 2):
                 chunk = vals[i:i+2]
-                # Tạo ở vị trí Input Disk rồi bay lên RAM
-                start_x, start_y = 50, 100 
-                block = self.create_run_ui_block(start_x, start_y, chunk)
+                block = self.create_run_ui_block(650, 85 + (i//2)*150, chunk)
                 self.run_blocks.append(block)
-                # Di chuyển lên các trang RAM
-                self.move_block(block, 650, 85 + (i//2)*150)
 
-        elif act == 'SORT_RAM':
-            # Hiệu ứng đổi màu để báo hiệu đang Sort
-            for b in self.run_blocks:
-                self.canvas.itemconfig(b[0], fill="#3498DB") # Xanh dương
-            
-            vals = step['values']
-            # Cập nhật giá trị sau khi sort
-            self.root.after(500, lambda: self._update_ram_values(vals))
-
+        # --- GIAI ĐOẠN 1: ĐƯA VÀO F1/F2 (Từ RAM -> F1/F2) ---
         elif act == 'WRITE_F_BUFFER':
             target = step['target']
             r_idx = step['run_idx']
@@ -157,37 +146,40 @@ class ExternalSortApp:
             ty = 230 if target == "F1" else 330
             
             if self.run_blocks:
-                b = self.run_blocks.pop(0)
+                # Lấy block cũ ra khỏi danh sách quản lý RAM
+                b = self.run_blocks.pop(0) 
+                # Di chuyển nó xuống Disk (Lệnh move sẽ tự động mang hình ảnh cũ đi, không để lại dấu vết)
                 self.move_block(b, tx, ty)
+                
+                # Lưu vào danh sách quản lý của F1/F2 để xóa sau này khi Merge
+                if target == "F1": self.f1_blocks.append(b)
+                else: self.f2_blocks.append(b)
 
-        # --- GIAI ĐOẠN 2: TRỘN (MERGE) ---
+        # --- GIAI ĐOẠN 2: TRỘN (Từ F1/F2 -> RAM) ---
         elif act == 'MERGE_LOAD_RAM':
-            # Tạo 2 block đại diện cho việc "hút" từ F1, F2 lên RAM
-            b1 = self.create_run_ui_block(55, 230, step['r1'])
-            b2 = self.create_run_ui_block(55, 330, step['r2'])
-            self.merge_blocks = [b1, b2]
-            
-            # Hiệu ứng bay lên RAM Page 1 và Page 2
-            self.move_block(b1, 650, 85)
-            self.move_block(b2, 650, 235)
+            # 1. XÓA hình ảnh cũ ở F1 và F2 trên Disk trước khi hiện ở RAM
+            if self.f1_blocks:
+                old_f1 = self.f1_blocks.pop(0)
+                self.canvas.delete(old_f1[0]); self.canvas.delete(old_f1[1])
+            if self.f2_blocks:
+                old_f2 = self.f2_blocks.pop(0)
+                self.canvas.delete(old_f2[0]); self.canvas.delete(old_f2[1])
 
-        elif act == 'MERGE_SORT_RAM':
-            # Tạo block kết quả tại RAM Page 3 (màu xanh lá)
-            b_out = self.create_run_ui_block(650, 385, step['values'])
-            self.canvas.itemconfig(b_out[0], fill="#2ECC71")
-            self.merge_blocks.append(b_out)
+            # 2. Tạo block mới ở RAM (Mô phỏng việc nạp lên)
+            b1 = self.create_run_ui_block(650, 85, step['r1']) # RAM Page 1
+            b2 = self.create_run_ui_block(650, 235, step['r2']) # RAM Page 2
+            self.merge_input_blocks = [b1, b2]
 
         elif act == 'WRITE_OUTPUT':
-            if len(self.merge_blocks) > 2:
-                res_block = self.merge_blocks.pop(2)
-                # Bay từ RAM xuống vùng Output Disk
-                self.move_block(res_block, 60, 430)
-                
-                # Xóa các block nguồn trong RAM
-                for b in self.merge_blocks:
-                    self.canvas.delete(b[0])
-                    self.canvas.delete(b[1])
-                self.merge_blocks = []
+            # Xóa các block đang đợi ở RAM Page 1 & 2 sau khi đã trộn xong
+            for b in self.merge_input_blocks:
+                self.canvas.delete(b[0])
+                self.canvas.delete(b[1])
+            self.merge_input_blocks = []
+
+            # Tạo block kết quả ở Output Disk
+            vals = step['values']
+            self.create_run_ui_block(60, 430, vals)
 
         elif act == 'FINISH':
             messagebox.showinfo("Thành công", f"Đã sắp xếp xong! Tổng I/O: {self.io_cost}")
