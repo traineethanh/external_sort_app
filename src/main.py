@@ -136,23 +136,36 @@ class ExternalSortApp:
                 block = self.create_run_ui_block(650, 85 + (i//2)*150, chunk)
                 self.run_blocks.append(block)
 
-        elif act == 'SORT_RAM':
-            vals = step['values']
-            for i in range(0, len(vals), 2):
-                new_txt = ", ".join([str(int(v)) for v in vals[i:i+2]])
-                self.canvas.itemconfig(self.run_blocks[i//2][1], text=new_txt)
+        elif act == 'MERGE_LOAD_RAM':
+            # Xóa các block cũ ở Disk (giả định lấy từ đầu danh sách hiển thị)
+            # Ở đây chúng ta tạo block mới trong RAM để mô phỏng việc nạp
+            b1 = self.create_run_ui_block(650, 85, step['r1']) # RAM Page 1
+            b2 = self.create_run_ui_block(650, 235, step['r2']) # RAM Page 2
+            self.merge_blocks = [b1, b2] # Lưu để quản lý
 
-        elif act == 'WRITE_F_BUFFER':
-            target = step['target']
-            r_idx = step['run_idx']
-            # Tọa độ các ô trong Disk Buffer F1 (y=220) và F2 (y=320)
-            tx = 55 + r_idx*125
-            ty = 230 if target == "F1" else 330
-            
-            if self.run_blocks:
-                b = self.run_blocks.pop(0)
-                self.move_block_instant(b, tx, ty)
+        elif act == 'MERGE_SORT_RAM':
+            # Vẽ run kết quả vào RAM Page 3
+            b_out = self.create_run_ui_block(650, 385, step['values'])
+            self.merge_blocks.append(b_out)
+            # Đổi màu block Page 3 để phân biệt là kết quả trộn
+            self.canvas.itemconfig(b_out[0], fill="#2ECC71") 
+
+        elif act == 'WRITE_OUTPUT':
+            # Lấy block từ RAM Page 3 đưa xuống Output Disk
+            if len(self.merge_blocks) > 2:
+                res_block = self.merge_blocks.pop(2)
+                # Tọa độ vùng Output Disk (x=50, y=420)
+                self.move_block_instant(res_block, 60, 430)
                 
+                # Xóa 2 block nguồn trong RAM sau khi trộn xong
+                for b in self.merge_blocks:
+                    self.canvas.delete(b[0])
+                    self.canvas.delete(b[1])
+                self.merge_blocks = []
+
+        elif act == 'FINISH':
+            messagebox.showinfo("Thành công", f"Đã sắp xếp xong! Tổng I/O: {self.io_cost}")
+
     def move_block_instant(self, block, tx, ty):
         curr = self.canvas.coords(block[0])
         self.canvas.move(block[0], tx - curr[0], ty - curr[1])
