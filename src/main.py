@@ -122,42 +122,68 @@ class ExternalSortApp:
         
         act = step['act']
 
+        # --- GIAI ĐOẠN 1: TẠO RUN ---
         if act == 'LOAD_RAM':
-            # Chỉ xóa các số được nạp vào RAM, các số khác vẫn ở lại Disk
-            indices_to_remove = step.get('indices', [])
-            for idx in indices_to_remove:
-                if self.raw_data_texts[idx] is not None:
+            # Xóa số lẻ trên disk theo index
+            indices = step.get('indices', [])
+            for idx in indices:
+                if self.raw_data_texts[idx]:
                     self.canvas.delete(self.raw_data_texts[idx])
-                    self.raw_data_texts[idx] = None # Đánh dấu đã xóa
-
+                    self.raw_data_texts[idx] = None
+            
             vals = step['values']
             for i in range(0, len(vals), 2):
                 chunk = vals[i:i+2]
-                block = self.create_run_ui_block(650, 85 + (i//2)*150, chunk)
+                # Tạo ở vị trí Input Disk rồi bay lên RAM
+                start_x, start_y = 50, 100 
+                block = self.create_run_ui_block(start_x, start_y, chunk)
                 self.run_blocks.append(block)
+                # Di chuyển lên các trang RAM
+                self.move_block(block, 650, 85 + (i//2)*150)
 
+        elif act == 'SORT_RAM':
+            # Hiệu ứng đổi màu để báo hiệu đang Sort
+            for b in self.run_blocks:
+                self.canvas.itemconfig(b[0], fill="#3498DB") # Xanh dương
+            
+            vals = step['values']
+            # Cập nhật giá trị sau khi sort
+            self.root.after(500, lambda: self._update_ram_values(vals))
+
+        elif act == 'WRITE_F_BUFFER':
+            target = step['target']
+            r_idx = step['run_idx']
+            tx = 55 + r_idx*125
+            ty = 230 if target == "F1" else 330
+            
+            if self.run_blocks:
+                b = self.run_blocks.pop(0)
+                self.move_block(b, tx, ty)
+
+        # --- GIAI ĐOẠN 2: TRỘN (MERGE) ---
         elif act == 'MERGE_LOAD_RAM':
-            # Xóa các block cũ ở Disk (giả định lấy từ đầu danh sách hiển thị)
-            # Ở đây chúng ta tạo block mới trong RAM để mô phỏng việc nạp
-            b1 = self.create_run_ui_block(650, 85, step['r1']) # RAM Page 1
-            b2 = self.create_run_ui_block(650, 235, step['r2']) # RAM Page 2
-            self.merge_blocks = [b1, b2] # Lưu để quản lý
+            # Tạo 2 block đại diện cho việc "hút" từ F1, F2 lên RAM
+            b1 = self.create_run_ui_block(55, 230, step['r1'])
+            b2 = self.create_run_ui_block(55, 330, step['r2'])
+            self.merge_blocks = [b1, b2]
+            
+            # Hiệu ứng bay lên RAM Page 1 và Page 2
+            self.move_block(b1, 650, 85)
+            self.move_block(b2, 650, 235)
 
         elif act == 'MERGE_SORT_RAM':
-            # Vẽ run kết quả vào RAM Page 3
+            # Tạo block kết quả tại RAM Page 3 (màu xanh lá)
             b_out = self.create_run_ui_block(650, 385, step['values'])
+            self.canvas.itemconfig(b_out[0], fill="#2ECC71")
             self.merge_blocks.append(b_out)
-            # Đổi màu block Page 3 để phân biệt là kết quả trộn
-            self.canvas.itemconfig(b_out[0], fill="#2ECC71") 
 
         elif act == 'WRITE_OUTPUT':
-            # Lấy block từ RAM Page 3 đưa xuống Output Disk
             if len(self.merge_blocks) > 2:
                 res_block = self.merge_blocks.pop(2)
-                # Tọa độ vùng Output Disk (x=50, y=420)
-                self.move_block_instant(res_block, 60, 430)
+                # Bay từ RAM xuống vùng Output Disk
+                self.move_block(res_block, 60, 430)
                 
-                # Xóa 2 block nguồn trong RAM sau khi trộn xong
+                # Xóa các block nguồn trong RAM
                 for b in self.merge_blocks:
                     self.canvas.delete(b[0])
                     self.canvas.delete(b[1])
@@ -166,10 +192,25 @@ class ExternalSortApp:
         elif act == 'FINISH':
             messagebox.showinfo("Thành công", f"Đã sắp xếp xong! Tổng I/O: {self.io_cost}")
 
-    def move_block_instant(self, block, tx, ty):
-        curr = self.canvas.coords(block[0])
-        self.canvas.move(block[0], tx - curr[0], ty - curr[1])
-        self.canvas.move(block[1], tx - curr[0], ty - curr[1])
+    def move_block(self, block_obj, tx, ty, callback=None):
+        """Hiệu ứng di chuyển mượt mà từ vị trí hiện tại đến (tx, ty)"""
+        r_id, t_id = block_obj
+        curr = self.canvas.coords(r_id)
+        if not curr: return
+        
+        steps = 15 # Số khung hình của chuyển động
+        dx = (tx - curr[0]) / steps
+        dy = (ty - curr[1]) / steps
+
+        def anim(count):
+            if count < steps:
+                self.canvas.move(r_id, dx, dy)
+                self.canvas.move(t_id, dx, dy)
+                self.root.after(20, lambda: anim(count + 1))
+            else:
+                if callback: callback()
+
+        anim(0)
 
     def step_next(self):
         if self.current_step_idx < len(self.all_steps) - 1:
