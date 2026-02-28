@@ -100,14 +100,16 @@ class ExternalSortApp:
         data = utils.read_binary_file(path)
         
         if len(data) > 12:
-            self.status.config(text="Dữ liệu lớn: Đã xuất file kết quả trực tiếp.")
+            self.status.config(text="Dữ liệu lớn: Đã xuất file trực tiếp.")
             utils.write_binary_file("sorted_output.bin", sorted(data))
             return
 
-        # Vẽ các phần tử thô vào Input Area
+        # Sửa đổi: Lưu các ID của text để xóa dần
+        self.raw_data_texts = [] 
         for i, v in enumerate(data):
             bx, by = 70 + (i % 4) * 85, 85 + (i // 4) * 35
-            self.canvas.create_text(bx, by, text=str(int(v)), font=("Arial", 10, "bold"), tags="raw_data")
+            t_id = self.canvas.create_text(bx, by, text=str(int(v)), font=("Arial", 10, "bold"))
+            self.raw_data_texts.append(t_id)
         
         self.all_steps = self.engine.get_simulation_steps(path)
         self.current_step_idx = -1
@@ -121,9 +123,14 @@ class ExternalSortApp:
         act = step['act']
 
         if act == 'LOAD_RAM':
-            self.canvas.delete("raw_data")
+            # Chỉ xóa các số được nạp vào RAM, các số khác vẫn ở lại Disk
+            indices_to_remove = step.get('indices', [])
+            for idx in indices_to_remove:
+                if self.raw_data_texts[idx] is not None:
+                    self.canvas.delete(self.raw_data_texts[idx])
+                    self.raw_data_texts[idx] = None # Đánh dấu đã xóa
+
             vals = step['values']
-            # Chia 6 số vào 3 trang RAM
             for i in range(0, len(vals), 2):
                 chunk = vals[i:i+2]
                 block = self.create_run_ui_block(650, 85 + (i//2)*150, chunk)
@@ -138,13 +145,14 @@ class ExternalSortApp:
         elif act == 'WRITE_F_BUFFER':
             target = step['target']
             r_idx = step['run_idx']
+            # Tọa độ các ô trong Disk Buffer F1 (y=220) và F2 (y=320)
             tx = 55 + r_idx*125
-            ty = 220 if target == "F1" else 320
+            ty = 230 if target == "F1" else 330
             
             if self.run_blocks:
                 b = self.run_blocks.pop(0)
                 self.move_block_instant(b, tx, ty)
-
+                
     def move_block_instant(self, block, tx, ty):
         curr = self.canvas.coords(block[0])
         self.canvas.move(block[0], tx - curr[0], ty - curr[1])
