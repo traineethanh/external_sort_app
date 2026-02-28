@@ -16,6 +16,9 @@ class ExternalSortApp:
         self.current_step_idx = -1
         self.run_blocks = [] 
         self.io_cost = 0
+        self.f1_blocks = []  # Quản lý các block ở Disk Buffer F1
+        self.f2_blocks = []  # Quản lý các block ở Disk Buffer F2
+        self.merge_input_blocks = [] # Quản lý block đầu vào lúc Merge trong RAM
 
         # Canvas hiển thị
         self.canvas = tk.Canvas(root, width=950, height=550, bg="white", highlightthickness=1)
@@ -122,42 +125,49 @@ class ExternalSortApp:
         
         act = step['act']
 
-        # --- GIAI ĐOẠN 0: TẠO RUN (Từ Input Disk -> RAM) ---
+        # --- GIAI ĐOẠN 0: TẠO RUN ---
         if act == 'LOAD_RAM':
-            # 1. Xóa số lẻ ở Input Area (Đã có logic ở phiên bản trước)
+            # Xóa số lẻ ở Input Area
             indices = step.get('indices', [])
             for idx in indices:
                 if self.raw_data_texts[idx]:
                     self.canvas.delete(self.raw_data_texts[idx])
                     self.raw_data_texts[idx] = None
             
-            # 2. Tạo block mới trong RAM
+            # Tạo block mới trong RAM (Dữ liệu chưa sort)
             vals = step['values']
             for i in range(0, len(vals), 2):
                 chunk = vals[i:i+2]
                 block = self.create_run_ui_block(650, 85 + (i//2)*150, chunk)
                 self.run_blocks.append(block)
 
-        # --- GIAI ĐOẠN 1: ĐƯA VÀO F1/F2 (Từ RAM -> F1/F2) ---
+        elif act == 'SORT_RAM':
+            # Cập nhật giá trị đã được SORT lên giao diện
+            vals = step['values']
+            for i in range(0, len(vals), 2):
+                new_txt = ", ".join([str(int(v)) for v in vals[i:i+2]])
+                # Đổi màu xanh để người dùng thấy đã sort xong
+                self.canvas.itemconfig(self.run_blocks[i//2][0], fill="#3498DB") 
+                self.canvas.itemconfig(self.run_blocks[i//2][1], text=new_txt)
+
         elif act == 'WRITE_F_BUFFER':
             target = step['target']
             r_idx = step['run_idx']
             tx = 55 + r_idx*125
-            ty = 230 if target == "F1" else 330
+            ty = 220 if target == "F1" else 320 # Khớp với tọa độ tĩnh
             
             if self.run_blocks:
-                # Lấy block cũ ra khỏi danh sách quản lý RAM
-                b = self.run_blocks.pop(0) 
-                # Di chuyển nó xuống Disk (Lệnh move sẽ tự động mang hình ảnh cũ đi, không để lại dấu vết)
+                b = self.run_blocks.pop(0)
+                # Di chuyển mượt mà xuống Disk
                 self.move_block(b, tx, ty)
                 
-                # Lưu vào danh sách quản lý của F1/F2 để xóa sau này khi Merge
+                # Lưu vào danh sách tương ứng để sau này xóa khi Merge
                 if target == "F1": self.f1_blocks.append(b)
                 else: self.f2_blocks.append(b)
 
-        # --- GIAI ĐOẠN 2: TRỘN (Từ F1/F2 -> RAM) ---
+        # --- GIAI ĐOẠN 2: TRỘN (MERGE) ---
         elif act == 'MERGE_LOAD_RAM':
-            # 1. XÓA hình ảnh cũ ở F1 và F2 trên Disk trước khi hiện ở RAM
+            # XÓA hình ảnh cũ ở F1 và F2 trên Disk (vì đã được nạp lên RAM)
             if self.f1_blocks:
                 old_f1 = self.f1_blocks.pop(0)
                 self.canvas.delete(old_f1[0]); self.canvas.delete(old_f1[1])
@@ -165,24 +175,28 @@ class ExternalSortApp:
                 old_f2 = self.f2_blocks.pop(0)
                 self.canvas.delete(old_f2[0]); self.canvas.delete(old_f2[1])
 
-            # 2. Tạo block mới ở RAM (Mô phỏng việc nạp lên)
-            b1 = self.create_run_ui_block(650, 85, step['r1']) # RAM Page 1
-            b2 = self.create_run_ui_block(650, 235, step['r2']) # RAM Page 2
+            # Tạo 2 block mới ở 2 ô đầu RAM (Dữ liệu đầu vào của Merge)
+            b1 = self.create_run_ui_block(650, 85, step['r1'])
+            b2 = self.create_run_ui_block(650, 235, step['r2'])
             self.merge_input_blocks = [b1, b2]
 
+        elif act == 'MERGE_SORT_RAM':
+            # Hiển thị kết quả trộn ở ô RAM thứ 3 (màu xanh lá)
+            b_out = self.create_run_ui_block(650, 385, step['values'])
+            self.canvas.itemconfig(b_out[0], fill="#2ECC71") 
+            self.merge_input_blocks.append(b_out)
+
         elif act == 'WRITE_OUTPUT':
-            # Xóa các block đang đợi ở RAM Page 1 & 2 sau khi đã trộn xong
-            for b in self.merge_input_blocks:
-                self.canvas.delete(b[0])
-                self.canvas.delete(b[1])
-            self.merge_input_blocks = []
-
-            # Tạo block kết quả ở Output Disk
-            vals = step['values']
-            self.create_run_ui_block(60, 430, vals)
-
-        elif act == 'FINISH':
-            messagebox.showinfo("Thành công", f"Đã sắp xếp xong! Tổng I/O: {self.io_cost}")
+            # Xóa các block nguồn ở RAM sau khi trộn xong
+            if len(self.merge_input_blocks) >= 3:
+                res_block = self.merge_input_blocks.pop(2) # Lấy block kết quả
+                self.move_block(res_block, 60, 430) # Đẩy xuống Output Area
+                
+                # Xóa 2 block nguồn trong RAM
+                for b in self.merge_input_blocks:
+                    self.canvas.delete(b[0])
+                    self.canvas.delete(b[1])
+                self.merge_input_blocks = []
 
     def move_block(self, block_obj, tx, ty, callback=None):
         """Hiệu ứng di chuyển mượt mà từ vị trí hiện tại đến (tx, ty)"""
@@ -213,8 +227,12 @@ class ExternalSortApp:
         self.draw_static_frames()
         self.io_cost = 0
         self.run_blocks = []
+        self.f1_blocks = []
+        self.f2_blocks = []
+        self.merge_input_blocks = []
         self.current_step_idx = -1
         self.btn_next.config(state="disabled")
+        self.raw_data_texts = []
 
 if __name__ == "__main__":
     root = tk.Tk()
