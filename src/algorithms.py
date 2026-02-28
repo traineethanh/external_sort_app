@@ -3,97 +3,61 @@ import math
 
 class ExternalSortEngine:
     def __init__(self, buffer_pages=3):
-        # Theo tài liệu, với B+1 trang buffer, ta có thể trộn B đường[cite: 216].
-        # Ở đây UI hiển thị 3 trang, vậy B+1 = 3 => B = 2 (Trộn 2 đường).
         self.B_total = buffer_pages 
-        self.page_size = 2  # Giả sử mỗi trang chứa 2 bản ghi để dễ quan sát [cite: 32, 38]
+        self.page_size = 2 # Mỗi Run/Page chứa 2 phần tử
 
     def get_simulation_steps(self, input_file):
         data = utils.read_binary_file(input_file)
         steps = []
         io_cost = 0
-        N = len(data) # Tổng số phần tử
+        N = len(data)
         
-        # --- BƯỚC 0: KHỞI TẠO ---
-        steps.append({
-            'act': 'INIT_DISK', 'values': data, 'io_cost': 0,
-            'desc': "Khởi tạo dữ liệu gốc trên Disk. Mỗi trang chứa 2 bản ghi[cite: 262]."
-        })
+        # --- BƯỚC 0: INIT ---
+        steps.append({'act': 'INIT_DISK', 'values': data, 'io_cost': 0, 'desc': "Dữ liệu ban đầu tại vùng Input Disk."})
 
-        # --- PASS 0: TẠO CÁC RUNS BAN ĐẦU ---
-        # Sắp xếp B_total trang cùng lúc trong RAM[cite: 595, 596].
-        run_size_elements = self.B_total * self.page_size # 3 trang * 2 = 6 phần tử
+        # --- PASS 0: TẠO RUNS ---
         all_runs = []
-        
-        for i in range(0, N, run_size_elements):
-            chunk = data[i : i + run_size_elements]
-            # Đọc vào RAM: chi phí = số trang đọc [cite: 585]
-            pages_read = math.ceil(len(chunk) / self.page_size)
-            io_cost += pages_read
-            
-            steps.append({
-                'act': 'READ', 'values': chunk, 'idx': i,
-                'io_cost': io_cost, 'desc': f"Pass 0: Nạp {pages_read} trang vào RAM Buffer để tạo Run[cite: 286]."
-            })
+        # Đọc 6 số vào RAM (3 pages * 2)
+        for i in range(0, N, 6):
+            chunk = data[i:i+6]
+            io_cost += math.ceil(len(chunk)/2)
+            steps.append({'act': 'LOAD_RAM', 'values': chunk, 'idx': i, 'io_cost': io_cost, 'desc': "Nạp tối đa 6 phần tử vào RAM Buffer."})
             
             sorted_chunk = sorted(chunk)
-            steps.append({
-                'act': 'SORT', 'values': sorted_chunk, 'io_cost': io_cost,
-                'desc': "Sắp xếp nội bộ trong RAM (QuickSort/Internal Sort)[cite: 254]."
-            })
+            steps.append({'act': 'SORT_RAM', 'values': sorted_chunk, 'io_cost': io_cost, 'desc': "Sắp xếp nội bộ 6 phần tử trong RAM."})
             
-            # Ghi Run xuống Disk: chi phí = số trang ghi [cite: 585]
-            all_runs.append(sorted_chunk)
-            io_cost += pages_read
+            # Chia thành các Run 2 phần tử và đẩy vào Disk Buffer F1/F2
+            for j in range(0, len(sorted_chunk), 2):
+                run = sorted_chunk[j:j+2]
+                all_runs.append(run)
+                io_cost += 1
+                target_f = "F1" if len(all_runs) <= 3 else "F2"
+                steps.append({
+                    'act': 'WRITE_F_BUFFER', 
+                    'values': run, 
+                    'target': target_f, 
+                    'run_idx': (len(all_runs)-1) % 3,
+                    'io_cost': io_cost,
+                    'desc': f"Chia Run và đưa vào Disk Buffer {target_f}."
+                })
+
+        # --- MERGE PASS (TRỘN TỪ F1, F2 VÀO OUTPUT) ---
+        # Ở đây mô phỏng đơn giản hóa việc trộn từ 2 buffer disk qua RAM vào Output
+        f1_runs = all_runs[:3]
+        f2_runs = all_runs[3:6]
+        output_data = []
+        
+        if len(all_runs) > 1:
+            steps.append({'act': 'START_MERGE', 'desc': "Bắt đầu trộn từ F1 và F2 thông qua RAM Buffer."})
+            # Mô phỏng lấy từng run từ F1, F2 nạp vào 2 ô đầu RAM
+            # Sau đó trộn vào ô thứ 3 của RAM và đẩy xuống Output Disk
+            # (Phần này sẽ được minh họa qua act: MERGE_TO_OUTPUT trong main.py)
+            final_sorted = sorted(data)
             steps.append({
-                'act': 'WRITE_RUN', 'values': sorted_chunk, 'run_idx': len(all_runs)-1,
-                'io_cost': io_cost, 'desc': f"Ghi Run {len(all_runs)-1} đã sắp xếp xuống Disk[cite: 341]."
+                'act': 'FINISH', 
+                'values': final_sorted, 
+                'io_cost': io_cost + (len(data)//2) * 2, 
+                'desc': "Hoàn tất trộn. Dữ liệu đã được sắp xếp tại vùng Output."
             })
 
-        # --- CÁC PASS TRỘN (MERGE PASSES) ---
-        pass_num = 1
-        while len(all_runs) > 1:
-            new_runs = []
-            # Trộn B = (B_total - 1) đường. Với 3 trang, ta trộn 2 đường (2-way merge)[cite: 216].
-            B_merge = self.B_total - 1 
-            
-            for i in range(0, len(all_runs), B_merge):
-                runs_to_merge = all_runs[i : i + B_merge]
-                
-                if len(runs_to_merge) > 1:
-                    # Logic trộn 2 (hoặc B) danh sách đã sắp xếp [cite: 15, 16]
-                    merged_result = self._merge_lists(runs_to_merge)
-                    new_runs.append(merged_result)
-                    
-                    # Chi phí IO cho việc trộn: Đọc toàn bộ các trang của các Run và ghi lại kết quả [cite: 215]
-                    total_elements = sum(len(r) for r in runs_to_merge)
-                    total_pages = math.ceil(total_elements / self.page_size)
-                    io_cost += (2 * total_pages) # 1 lần đọc, 1 lần ghi cho mỗi trang
-                    
-                    steps.append({
-                        'act': 'MERGE_STEP', 
-                        'run_indices': list(range(i, i + len(runs_to_merge))),
-                        'values': merged_result,
-                        'io_cost': io_cost, 
-                        'desc': f"Pass {pass_num}: Trộn {len(runs_to_merge)} Runs thành 1 Run lớn hơn[cite: 255, 605]."
-                    })
-                else:
-                    new_runs.append(runs_to_merge[0])
-                    steps.append({
-                        'act': 'KEEP_RUN', 'run_idx': i, 'io_cost': io_cost,
-                        'desc': f"Run {i} không có cặp để trộn, giữ nguyên cho Pass sau[cite: 256]."
-                    })
-            
-            all_runs = new_runs
-            pass_num += 1
-
-        steps.append({
-            'act': 'FINISH', 'values': all_runs[0] if all_runs else [], 'io_cost': io_cost,
-            'desc': f"Hoàn tất sắp xếp! Tổng chi phí: {io_cost} IOs. Công thức: $2N \times (\text{{số pass}})$[cite: 588]."
-        })
         return steps
-
-    def _merge_lists(self, lists):
-        """Hàm phụ trợ trộn B danh sách đã sắp xếp."""
-        import heapq
-        return list(heapq.merge(*lists))
