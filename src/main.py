@@ -188,49 +188,51 @@ class ExternalSortApp:
             self.merge_input_blocks = [b1, b2, b3]
 
         elif act == 'REPACK_SHIFT_DOWN':
-            # Xóa toàn bộ RAM cũ
-            for b in self.merge_input_blocks:
-                if b: self.canvas.delete(b[0]); self.canvas.delete(b[1])
+            # 1. Xóa sạch 3 Page trong RAM hiện tại trước khi vẽ trạng thái mới
+            if hasattr(self, 'merge_input_blocks'):
+                for b in self.merge_input_blocks:
+                    if b: 
+                        self.canvas.delete(b[0]) # Xóa khung
+                        self.canvas.delete(b[1]) # Xóa chữ
             
             self.merge_input_blocks = [None, None, None]
 
-            # Vẽ lại theo đúng Page được gửi từ Engine
-            # p1: Top (85), p2: Mid (235), p3: Bottom (385)
-            if step['p1']: self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, step['p1'])
-            if step['p2']: self.merge_input_blocks[1] = self.create_run_ui_block(650, 235, step['p2'])
-            if step['p3']: 
-                self.merge_input_blocks[2] = self.create_run_ui_block(650, 385, step['p3'])
-                self.canvas.itemconfig(self.merge_input_blocks[2][0], fill="#2ECC71") # Run nhỏ nhất
-                
+            # 2. Vẽ lại 3 tầng dựa trên dữ liệu 'p1', 'p2', 'p3' từ Engine gửi sang
+            # Tọa độ y chuẩn: Page 1 (85), Page 2 (235), Page 3 (385)
+            y_coords = [85, 235, 385]
+            p_data = [step.get('p1'), step.get('p2'), step.get('p3')]
+            
+            for i in range(3):
+                if p_data[i]:
+                    self.merge_input_blocks[i] = self.create_run_ui_block(650, y_coords[i], p_data[i])
+                    if i == 2: # Page 3 là "Cửa ra", cho màu khác biệt
+                        self.canvas.itemconfig(self.merge_input_blocks[i][0], fill="#2ECC71")
         elif act == 'WRITE_OUTPUT':
-            # Chỉ lấy Page 3 ra để di chuyển, để lại Page 1 & 2
             if self.merge_input_blocks[2]:
                 res_block = self.merge_input_blocks[2]
-                self.merge_input_blocks[2] = None # Đánh dấu ô RAM này đã trống
+                self.merge_input_blocks[2] = None # Giải phóng slot Page 3 trên logic UI
                 
                 out_idx = step.get('output_idx', 0)
-                tx = 55 + (out_idx % 3) * 125 # Xếp hàng ngang
+                tx = 55 + (out_idx % 3) * 125 
                 ty = 435
                 self.move_block(res_block, tx, ty)
-                self.canvas.itemconfig(res_block[0], fill="#D32F2F") # Đổi sang màu đỏ kết quả
+                self.canvas.itemconfig(res_block[0], fill="#D32F2F")
 
         elif act == 'REF_LOAD_TOP':
-            # 1. Xóa hình ảnh trên Disk (Lỗi bạn đã fix được)
+            # Xóa hình trên Disk F1/F2
             if self.f1_blocks:
-                old_d = self.f1_blocks.pop(0)
-                self.canvas.delete(old_d[0]); self.canvas.delete(old_d[1])
+                old_f = self.f1_blocks.pop(0)
+                self.canvas.delete(old_f[0]); self.canvas.delete(old_f[1])
             elif self.f2_blocks:
-                old_d = self.f2_blocks.pop(0)
-                self.canvas.delete(old_d[0]); self.canvas.delete(old_d[1])
+                old_f = self.f2_blocks.pop(0)
+                self.canvas.delete(old_f[0]); self.canvas.delete(old_f[1])
 
-            # 2. QUAN TRỌNG: Xóa block đang chiếm chỗ ở RAM Page 1 trước khi nạp mới
-            # Nếu không có dòng này, run mới (ví dụ chứa số nhỏ) sẽ đè lên run cũ (số dư)
+            # XÓA PAGE 1 TRONG RAM TRƯỚC KHI NẠP
             if self.merge_input_blocks[0]:
-                old_r = self.merge_input_blocks[0]
-                self.canvas.delete(old_r[0])
-                self.canvas.delete(old_r[1])
+                old_p1 = self.merge_input_blocks[0]
+                self.canvas.delete(old_p1[0]); self.canvas.delete(old_p1[1])
             
-            # 3. Nạp run mới vào đúng slot Page 1 (y=85)
+            # Nạp mới
             self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, step['values'])
 
     def move_block(self, block_obj, tx, ty, callback=None):
