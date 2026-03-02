@@ -62,63 +62,69 @@ class ExternalSortEngine:
                     'desc': f"Đưa Run {run} vào {target} (Xóa hình ảnh ở RAM)."
                 })
 
-        # --- PASS 1: MERGE RUNS (Logic Repacking/Trộn từng số) ---
-        # Giả sử ta có all_runs_f1 và all_runs_f2 từ Pass 0
-        
-        output_buffer = []
-        ram_pages = [[], [], []] # RAM Page 1, 2, 3
-        
-        # Nạp lần đầu
+        # --- PASS 1: MERGE RUNS (Logic Repacking/Trộn từng phần tử) ---
+        output_run_count = 0 
+        ram_pages = [[], [], []] # Đại diện cho RAM Page 1, 2, 3
+
+        # 1. Nạp lần đầu: Lấy 2 run đầu tiên từ F1 và F2 vào RAM Page 1 & 2
         if all_runs_f1 and all_runs_f2:
             ram_pages[0] = all_runs_f1.pop(0)
             ram_pages[1] = all_runs_f2.pop(0)
             steps.append({
                 'act': 'MERGE_LOAD_RAM',
                 'r1': ram_pages[0], 'r2': ram_pages[1],
-                'desc': "Nạp 2 Run đầu từ F1, F2 vào RAM Page 1 & 2."
+                'desc': "Nạp 2 Run đầu từ F1, F2 vào RAM Page 1 & 2 (Mỗi trang 2 số)."
             })
             io_cost += 2
 
-        # Vòng lặp trộn cho đến khi hết dữ liệu ở Disk và RAM
+        # 2. Vòng lặp trộn chính
+        # Điều kiện: Còn dữ liệu trong RAM hoặc còn Run trong Disk để nạp tiếp
         while any(ram_pages[0:2]) or all_runs_f1 or all_runs_f2:
-            # 1. Gom tất cả số hiện có trong RAM (Page 1 & 2) và sắp xếp
+            
+            # Gom tất cả số hiện có trong 2 trang RAM đầu vào
             current_in_ram = sorted(ram_pages[0] + ram_pages[1])
             
-            # 2. Lấy 2 số nhỏ nhất cho vào Page 3 (Output Buffer)
+            if not current_in_ram: break # Hết dữ liệu hoàn toàn
+
+            # Lấy 2 số nhỏ nhất cho vào Page 3 (Output Page)
             ram_pages[2] = current_in_ram[:2]
-            # 3. Các số còn lại chia vào Page 1 và 2 (Repacking)
+            
+            # Các số còn lại (nếu có) dồn về Page 1 và Page 2
             remaining = current_in_ram[2:]
             ram_pages[0] = remaining[:2]
-            ram_pages[1] = remaining[2:4]
+            ram_pages[1] = remaining[2:4] # Trong mô phỏng n=12, Page 2 thường sẽ trống sau bước này
 
             steps.append({
                 'act': 'REPACK_RAM',
                 'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': ram_pages[2],
-                'desc': "Sắp xếp RAM: 2 số nhỏ nhất vào Page 3, các số còn lại dồn về Page 1 & 2."
+                'desc': f"Sắp xếp RAM: {ram_pages[2]} nhỏ nhất vào Page 3, dồn {remaining} về Page 1 & 2."
             })
 
-            # 4. Đẩy Page 3 xuống Disk Output
+            # Xuất Page 3 xuống Output Disk
             steps.append({
                 'act': 'WRITE_OUTPUT',
                 'values': ram_pages[2],
-                'desc': f"Đẩy Run nhỏ nhất {ram_pages[2]} xuống Output Disk."
+                'output_idx': output_run_count,
+                'desc': f"Đẩy Run nhỏ nhất {ram_pages[2]} xuống Output Disk tại vị trí {output_run_count + 1}."
             })
+            output_run_count += 1
             io_cost += 1
-            ram_pages[2] = [] # Reset page 3
+            ram_pages[2] = [] # Giải phóng Page 3 sau khi xuất
 
-            # 5. Nạp thêm dữ liệu vào ô RAM đang trống (nếu có)
+            # Nạp thêm dữ liệu từ Disk vào ô RAM đang trống
+            # Ưu tiên nạp vào Page 1 nếu trống, sau đó đến Page 2
             if not ram_pages[0] and all_runs_f1:
                 ram_pages[0] = all_runs_f1.pop(0)
                 steps.append({
                     'act': 'REF_LOAD', 'target_page': 0, 'values': ram_pages[0],
-                    'desc': "RAM Page 1 trống, nạp Run tiếp theo từ F1."
+                    'desc': "RAM Page 1 trống, nạp Run tiếp theo từ F1 lên."
                 })
                 io_cost += 1
             elif not ram_pages[1] and all_runs_f2:
                 ram_pages[1] = all_runs_f2.pop(0)
                 steps.append({
                     'act': 'REF_LOAD', 'target_page': 1, 'values': ram_pages[1],
-                    'desc': "RAM Page 2 trống, nạp Run tiếp theo từ F2."
+                    'desc': "RAM Page 2 trống, nạp Run tiếp theo từ F2 lên."
                 })
                 io_cost += 1
             

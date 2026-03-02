@@ -211,13 +211,22 @@ class ExternalSortApp:
             self.canvas.itemconfig(b3[0], fill="#2ECC71") # Màu xanh cho trang sắp xuất
             
             self.merge_input_blocks = [b for b in [b1, b2, b3] if b is not None]
-
         elif act == 'WRITE_OUTPUT':
-            # Tìm block ở Page 3 (thường là cuối danh sách)
             if self.merge_input_blocks:
+                # Lấy block từ Page 3 RAM (ô cuối cùng trong danh sách quản lý RAM)
                 res_block = self.merge_input_blocks.pop() 
-                self.move_block(res_block, 60, 430 + (self.current_step_idx * 5)) # Di chuyển xuống Output
-            
+                
+                # Tính toán vị trí ngang trong Output Area
+                # Giả sử vùng Output bắt đầu từ x=50, mỗi block rộng 100 + khoảng cách 25 = 125
+                output_count = step.get('output_idx', 0) # Lấy index từ engine gửi qua
+                tx = 55 + (output_count % 3) * 125 
+                ty = 435 # Cố định độ cao trong khung Output
+                
+                self.move_block(res_block, tx, ty)
+                
+                # Đổi màu block thành màu đỏ hoặc cam để phân biệt là kết quả cuối
+                self.canvas.itemconfig(res_block[0], fill="#D32F2F")
+         
         elif act == 'REF_LOAD':
             # Nạp thêm vào RAM khi có ô trống
             target_idx = step['target_page']
