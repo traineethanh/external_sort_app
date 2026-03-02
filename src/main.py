@@ -65,13 +65,20 @@ class ExternalSortApp:
             self.canvas.create_rectangle(550, 60 + i*150, 890, 180 + i*150, outline="#28a745", width=2)
             self.canvas.create_text(720, 50 + i*150, text=f"RAM Page {i+1}", fill="#28a745", font=("Arial", 9, "bold"))
 
-    def create_run_ui_block(self, x, y, values):
-        """Tạo khối UI linh hoạt cho cả 1 hoặc 2 phần tử"""
+    def create_run_ui_block(self, x, y, values, is_output=False):
+        """Tạo khối UI linh hoạt. Nếu là output thì thu nhỏ kích thước."""
         if not values: return None
+        
+        # Cấu hình kích thước: RAM (100x45), Output (70x35)
+        w = 70 if is_output else 100
+        h = 35 if is_output else 45
+        font_size = 8 if is_output else 10
+        
         val_str = ", ".join([str(int(v)) for v in values])
+        
         # Vẽ block
-        rect = self.canvas.create_rectangle(x, y, x+100, y+45, fill="#4A4A4A", outline="white", width=2)
-        text = self.canvas.create_text(x+50, y+22, text=val_str, fill="#FFCC00", font=("Arial", 10, "bold"))
+        rect = self.canvas.create_rectangle(x, y, x + w, y + h, fill="#4A4A4A", outline="white", width=2)
+        text = self.canvas.create_text(x + w/2, y + h/2, text=val_str, fill="#FFCC00", font=("Arial", font_size, "bold"))
         return [rect, text]
 
     def create_controls(self):
@@ -209,13 +216,27 @@ class ExternalSortApp:
         elif act == 'WRITE_OUTPUT':
             if self.merge_input_blocks[2]:
                 res_block = self.merge_input_blocks[2]
-                self.merge_input_blocks[2] = None # Giải phóng slot Page 3 trên logic UI
+                self.merge_input_blocks[2] = None 
                 
+                # Tính toán vị trí mới trong Output Area
                 out_idx = step.get('output_idx', 0)
-                tx = 55 + (out_idx % 3) * 125 
-                ty = 435
-                self.move_block(res_block, tx, ty)
-                self.canvas.itemconfig(res_block[0], fill="#D32F2F")
+                # Khoảng cách x (dx) bây giờ nhỏ hơn (ví dụ 80 thay vì 125) để xếp vừa nhiều Run hơn
+                tx = 55 + (out_idx % 5) * 75  # Chia làm 5 cột, mỗi cột cách nhau 75px
+                ty = 425 + (out_idx // 5) * 40 # Nếu đầy 1 hàng thì xuống hàng tiếp theo
+                
+                # CẬP NHẬT KÍCH THƯỚC KHỐI KHI DI CHUYỂN
+                # Vì Tkinter không cho resize rect trực tiếp dễ dàng, 
+                # ta vẽ một khối mới nhỏ hơn tại vị trí đích và xóa khối cũ khi animation kết thúc.
+                
+                def on_move_done():
+                    # Xóa khối to vừa bay tới
+                    self.canvas.delete(res_block[0])
+                    self.canvas.delete(res_block[1])
+                    # Vẽ khối nhỏ thay thế ngay tại đó
+                    new_small_block = self.create_run_ui_block(tx, ty, step['values'], is_output=True)
+                    self.canvas.itemconfig(new_small_block[0], fill="#D32F2F") # Màu đỏ cho Output
+
+                self.move_block(res_block, tx, ty, callback=on_move_done)
 
         elif act == 'REF_LOAD_TOP':
             # FIX: Xóa run ở Disk khi nạp thêm vào Page 1
