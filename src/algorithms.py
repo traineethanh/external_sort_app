@@ -42,7 +42,12 @@ class ExternalSortEngine:
         if all_runs_f1: ram_pages[0] = all_runs_f1.pop(0)
         if all_runs_f2: ram_pages[1] = all_runs_f2.pop(0)
         io_cost += 2
-        steps.append({'act': 'REPACK_SHIFT_DOWN', 'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': None, 'desc': "Nạp 2 Run đầu từ F1, F2 vào RAM."})
+        steps.append({
+            'act': 'REPACK_SHIFT_DOWN', 
+            'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': None, 
+            'clear_sources': ['F1', 'F2'], # Bổ sung để UI xóa 2 run đầu ở Disk
+            'desc': "Nạp 2 Run đầu từ F1, F2 vào RAM."
+        })
 
         output_idx = 0
         while any(p is not None for p in ram_pages) or all_runs_f1 or all_runs_f2:
@@ -88,19 +93,21 @@ class ExternalSortEngine:
             if all_runs_f1 or all_runs_f2:
                 if all_runs_f1 and all_runs_f2:
                     if all_runs_f1[0][0] <= all_runs_f2[0][0]:
-                        new_run = all_runs_f1.pop(0)
-                        source = "F1" # Thêm dòng này
+                        new_run, source = all_runs_f1.pop(0), "F1" # Gán source
                     else:
-                        new_run = all_runs_f2.pop(0)
-                        source = "F2" # Thêm dòng này
+                        new_run, source = all_runs_f2.pop(0), "F2" # Gán source
                 else:
-                    source = "F1" if all_runs_f1 else "F2" # Thêm dòng này
+                    source = "F1" if all_runs_f1 else "F2"
                     new_run = all_runs_f1.pop(0) if all_runs_f1 else all_runs_f2.pop(0)
                 
                 ram_pages[0] = new_run
-                io_cost += 1
-                # Gửi thêm source vào step
-                steps.append({'act': 'REF_LOAD_TOP', 'values': new_run, 'source': source, 'io_cost': io_cost, 'desc': f"Nạp Run {new_run} từ {source} vào Page 1."})
+                steps.append({
+                    'act': 'REF_LOAD_TOP', 
+                    'values': new_run, 
+                    'source': source, # Bổ sung để UI biết xóa ở đâu
+                    'io_cost': io_cost, 
+                    'desc': f"Nạp Run {new_run} từ {source} vào Page 1."
+                })
 
         steps.append({'act': 'FINISH', 'desc': "Hoàn thành!", 'io_cost': io_cost})
         return steps

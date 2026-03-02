@@ -189,9 +189,9 @@ class ExternalSortApp:
             self.merge_input_blocks = [b1, b2, b3]
 
         elif act == 'REPACK_SHIFT_DOWN':
-            # Xử lý xóa block ở Disk nếu đây là bước khởi đầu Pass 1
-            sources_to_clear = step.get('clear_sources', [])
-            for src in sources_to_clear:
+            # FIX: Xóa run ở Disk khi bắt đầu Pass 1
+            sources = step.get('clear_sources', [])
+            for src in sources:
                 if src == "F1" and self.f1_blocks:
                     b = self.f1_blocks.pop(0)
                     self.canvas.delete(b[0]); self.canvas.delete(b[1])
@@ -218,19 +218,16 @@ class ExternalSortApp:
                 self.canvas.itemconfig(res_block[0], fill="#D32F2F")
 
         elif act == 'REF_LOAD_TOP':
-            # --- PHẦN FIX LỖI: Xóa block ở Disk khi nạp ---
+            # FIX: Xóa run ở Disk khi nạp thêm vào Page 1
             source = step.get('source')
             if source == "F1" and self.f1_blocks:
                 b = self.f1_blocks.pop(0)
-                self.canvas.delete(b[0]) # Xóa hình chữ nhật
-                self.canvas.delete(b[1]) # Xóa chữ
+                self.canvas.delete(b[0]); self.canvas.delete(b[1])
             elif source == "F2" and self.f2_blocks:
                 b = self.f2_blocks.pop(0)
-                self.canvas.delete(b[0])
-                self.canvas.delete(b[1])
-            # ------------------------------------------
+                self.canvas.delete(b[0]); self.canvas.delete(b[1])
 
-            # Xóa Page 1 cũ trong RAM và vẽ cái mới (giữ nguyên code cũ của bạn)
+            # Vẽ lại Page 1 trong RAM
             if self.merge_input_blocks[0]:
                 self.canvas.delete(self.merge_input_blocks[0][0])
                 self.canvas.delete(self.merge_input_blocks[0][1])
