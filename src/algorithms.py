@@ -91,13 +91,15 @@ class ExternalSortEngine:
             
             # Các số còn lại (nếu có) dồn về Page 1 và Page 2
             remaining = current_in_ram[2:]
-            ram_pages[0] = remaining[:2]
-            ram_pages[1] = remaining[2:4] # Trong mô phỏng n=12, Page 2 thường sẽ trống sau bước này
+            ram_pages[0] = [remaining[0]] if len(remaining) > 0 else []
+            ram_pages[1] = [remaining[1]] if len(remaining) > 1 else []
 
             steps.append({
                 'act': 'REPACK_RAM',
-                'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': ram_pages[2],
-                'desc': f"Sắp xếp RAM: {ram_pages[2]} nhỏ nhất vào Page 3, dồn {remaining} về Page 1 & 2."
+                'p1': ram_pages[0], 
+                'p2': ram_pages[1], 
+                'p3': ram_pages[2],
+                'desc': f"Trích {ram_pages[2]} ra Page 3. Tách {remaining} vào Page 1 và Page 2 để đợi nạp thêm."
             })
 
             # Xuất Page 3 xuống Output Disk

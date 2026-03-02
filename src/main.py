@@ -200,17 +200,22 @@ class ExternalSortApp:
         act = step['act']
 
         if act == 'REPACK_RAM':
-            # Xóa các block cũ ở RAM
+            # Xóa các block cũ trong RAM để vẽ lại trạng thái mới
             for b in self.merge_input_blocks:
-                self.canvas.delete(b[0]); self.canvas.delete(b[1])
+                if b: 
+                    self.canvas.delete(b[0])
+                    self.canvas.delete(b[1])
             
-            # Tạo lại 3 block theo vị trí mới
+            # Tạo lại các block dựa trên dữ liệu đã tách
+            # Lưu ý: create_run_ui_block đã nhận đầu vào là một list (dù có 1 hay 2 phần tử)
             b1 = self.create_run_ui_block(650, 85, step['p1']) if step['p1'] else None
             b2 = self.create_run_ui_block(650, 235, step['p2']) if step['p2'] else None
-            b3 = self.create_run_ui_block(650, 385, step['p3']) # Page 3 luôn có vì vừa sort
-            self.canvas.itemconfig(b3[0], fill="#2ECC71") # Màu xanh cho trang sắp xuất
+            b3 = self.create_run_ui_block(650, 385, step['p3']) # Page 3 (Output)
             
-            self.merge_input_blocks = [b for b in [b1, b2, b3] if b is not None]
+            self.canvas.itemconfig(b3[0], fill="#2ECC71") # Highlight trang sắp xuất
+            
+            self.merge_input_blocks = [b1, b2, b3]
+            
         elif act == 'WRITE_OUTPUT':
             if self.merge_input_blocks:
                 # Lấy block từ Page 3 RAM (ô cuối cùng trong danh sách quản lý RAM)
