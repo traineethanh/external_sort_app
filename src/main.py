@@ -113,10 +113,10 @@ class ExternalSortApp:
         tk.Button(control_frame, text="Tạo 50 số", width=15, 
                   command=lambda: self.load_and_init(utils.create_random_input("input_50.bin", 50))).grid(row=0, column=2, padx=5)
 
-        self.btn_next = tk.Button(control_frame, text="Bước tiếp theo >>", width=20, command=self.step_next, state="disabled", bg="#BBDEFB")
-        self.btn_next.grid(row=1, column=1, pady=10)
-        self.btn_auto = tk.Button(self.root, text="Chạy Auto ▶", width=20, command=self.toggle_auto, state="disabled", bg="#C8E6C9")
-        self.btn_auto.pack(pady=5)
+        self.btn_next = tk.Button(control_frame, text="Bước tiếp theo >>", width=25, command=self.step_next, state="disabled", bg="#BBDEFB")
+        self.btn_next.grid(row=1, column=0, columnspan=4, pady=(10, 5))
+        self.btn_auto = tk.Button(self.root, text="Chạy Auto ▶", width=25, command=self.toggle_auto, state="disabled", bg="#C8E6C9")
+        self.btn_auto.grid(row=2, column=0, columnspan=4, pady=5)
 
         self.lbl_io = tk.Label(self.root, text="Tổng Chi Phí I/O: 0", font=("Arial", 13, "bold"), fg="#D32F2F")
         self.lbl_io.pack()
