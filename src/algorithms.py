@@ -62,70 +62,80 @@ class ExternalSortEngine:
                     'desc': f"Đưa Run {run} vào {target} (Xóa hình ảnh ở RAM)."
                 })
 
-        # --- PASS 1: MERGE RUNS (Logic Băng chuyền) ---
-        output_run_count = 0 
+        # --- PASS 1: BĂNG CHUYỀN 3 TẦNG ---
+        output_idx = 0
         ram_pages = [None, None, None] # [Page 1, Page 2, Page 3]
 
+        # 1. Khởi tạo: Nạp 2 run đầu vào Page 1 và 2
         if all_runs_f1: ram_pages[0] = all_runs_f1.pop(0)
         if all_runs_f2: ram_pages[1] = all_runs_f2.pop(0)
         
         steps.append({
-            'act': 'MERGE_LOAD_RAM',
-            'r1': ram_pages[0], 'r2': ram_pages[1],
-            'desc': "Nạp 2 Run đầu tiên từ Disk vào RAM Page 1 và 2."
+            'act': 'REPACK_SHIFT_DOWN',
+            'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': ram_pages[2],
+            'desc': "Bắt đầu Pass 1: Nạp 2 Run vào Page 1 và 2."
         })
 
-        # Vòng lặp chạy cho đến khi RAM trống rỗng và Disk cũng hết
         while any(p is not None for p in ram_pages) or all_runs_f1 or all_runs_f2:
-            # Bước A: Chọn Run nhỏ nhất để dồn xuống
-            idx_min = -1
-            # Chỉ so sánh những trang đang có dữ liệu (Page 1 và 2)
-            valid_indices = [i for i in range(2) if ram_pages[i] is not None]
             
-            if len(valid_indices) == 2:
-                idx_min = 0 if ram_pages[0][0] < ram_pages[1][0] else 1
-            elif len(valid_indices) == 1:
-                idx_min = valid_indices[0]
+            # BƯỚC 1: SORT TRONG RAM (Để tìm Run nhỏ nhất đưa xuống Page 3)
+            # Ta lấy tất cả các Run hiện có trong RAM, sắp xếp chúng dựa trên giá trị phần tử đầu tiên
+            current_runs_in_ram = [p for p in ram_pages if p is not None]
+            current_runs_in_ram.sort(key=lambda x: x[0]) # Run có số nhỏ nhất lên đầu
+            
+            # Gán lại vào Page theo thứ tự: Nhỏ nhất xuống Page 3, lớn nhất lên Page 1
+            new_ram = [None, None, None]
+            if len(current_runs_in_ram) >= 1: new_ram[2] = current_runs_in_ram[0] # Nhỏ nhất
+            if len(current_runs_in_ram) >= 2: new_ram[1] = current_runs_in_ram[1] # Lớn nhì
+            if len(current_runs_in_ram) >= 3: new_ram[0] = current_runs_in_ram[2] # Lớn nhất
+            ram_pages = new_ram
 
-            if idx_min != -1:
-                # 1. Lấy Run nhỏ nhất ra
-                chosen_run = ram_pages.pop(idx_min)
-                # 2. Chèn None vào đầu để đẩy các Run còn lại xuống
-                ram_pages.insert(0, None)
-                # 3. Gán Run đã chọn vào Page 3 (Vị trí cuối cùng)
-                ram_pages[2] = chosen_run
+            steps.append({
+                'act': 'REPACK_SHIFT_DOWN',
+                'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': ram_pages[2],
+                'desc': "Sắp xếp thứ tự các Run: Nhỏ nhất về Page 3, lớn nhất về Page 1."
+            })
 
-                steps.append({
-                    'act': 'REPACK_SHIFT_DOWN',
-                    'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': ram_pages[2],
-                    'desc': f"Run {chosen_run} nhỏ hơn được đưa xuống Page 3. Các trang khác dồn xuống."
-                })
-
-                # Bước B: Xuất Page 3
+            # BƯỚC 2: CHUYỂN PAGE 3 QUA OUTPUT
+            if ram_pages[2]:
                 steps.append({
                     'act': 'WRITE_OUTPUT',
                     'values': ram_pages[2],
-                    'output_idx': output_run_count,
-                    'desc': f"Ghi Run {ram_pages[2]} xuống Output. RAM Page 3 trống."
+                    'output_idx': output_idx,
+                    'desc': f"Xuất Run nhỏ nhất {ram_pages[2]} từ Page 3 ra Disk."
                 })
-                output_run_count += 1
-                io_cost += 1
-                ram_pages[2] = None # Reset Page 3 sau khi ghi
+                output_idx += 1
+                ram_pages[2] = None
 
-            # Bước C: Nạp mới vào Page 1 (Nếu Page 1 đang trống và Disk còn hàng)
-            if ram_pages[0] is None and (all_runs_f1 or all_runs_f2):
-                new_run = all_runs_f1.pop(0) if all_runs_f1 else all_runs_f2.pop(0)
+            # BƯỚC 3: DỊCH CHUYỂN XUỐNG (Dồn hàng)
+            # Page 2 -> 3, Page 1 -> 2
+            ram_pages[2] = ram_pages[1]
+            ram_pages[1] = ram_pages[0]
+            ram_pages[0] = None
+
+            steps.append({
+                'act': 'REPACK_SHIFT_DOWN',
+                'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': ram_pages[2],
+                'desc': "Dịch chuyển các Run còn lại xuống 1 tầng (Page 2->3, Page 1->2)."
+            })
+
+            # BƯỚC 4: NẠP RUN TIẾP THEO TỪ DISK VÀO PAGE 1
+            if all_runs_f1 or all_runs_f2:
+                # Lấy run nhỏ nhất từ đầu f1 hoặc f2 (mô phỏng việc chọn run)
+                if all_runs_f1 and all_runs_f2:
+                    if all_runs_f1[0][0] < all_runs_f2[0][0]:
+                        new_run = all_runs_f1.pop(0)
+                    else:
+                        new_run = all_runs_f2.pop(0)
+                else:
+                    new_run = all_runs_f1.pop(0) if all_runs_f1 else all_runs_f2.pop(0)
+                
                 ram_pages[0] = new_run
                 steps.append({
                     'act': 'REF_LOAD_TOP',
                     'values': new_run,
-                    'desc': f"Nạp Run {new_run} mới vào Page 1."
+                    'desc': f"Nạp Run tiếp theo {new_run} từ Disk vào Page 1."
                 })
-                io_cost += 1
-            
-            # Kiểm tra thoát an toàn: Nếu RAM trống và Disk hết
-            if not any(ram_pages) and not all_runs_f1 and not all_runs_f2:
-                break
 
-        steps.append({'act': 'FINISH', 'values': sorted(data), 'io_cost': io_cost, 'desc': "Sắp xếp hoàn tất!"})
+        steps.append({'act': 'FINISH', 'desc': "Sắp xếp hoàn tất!", 'io_cost': 0})
         return steps
