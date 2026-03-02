@@ -211,6 +211,32 @@ class ExternalSortApp:
             # Nạp block mới vào ô RAM mục tiêu
             new_y = 85 if t_idx == 0 else 235
             self.merge_input_blocks[t_idx] = self.create_run_ui_block(650, new_y, step['values'])
+            
+        elif act == 'REPACK_SHIFT_DOWN':
+            # Logic: Di chuyển block đang ở Page 1 xuống Page 2, Page 2 xuống Page 3...
+            # Để đơn giản và chính xác, ta xóa cũ và tạo mới tại tọa độ dồn
+            for b in self.merge_input_blocks:
+                if b: self.canvas.delete(b[0]); self.canvas.delete(b[1])
+            
+            # Vẽ lại theo thứ tự dồn xuống
+            # p1 (Page 1 - Top), p2 (Page 2 - Mid), p3 (Page 3 - Bottom)
+            b1 = self.create_run_ui_block(650, 85, step['p1']) if step['p1'] else None
+            b2 = self.create_run_ui_block(650, 235, step['p2']) if step['p2'] else None
+            b3 = self.create_run_ui_block(650, 385, step['p3']) if step['p3'] else None
+            
+            if b3: self.canvas.itemconfig(b3[0], fill="#2ECC71") # Trang sẽ xuất
+            self.merge_input_blocks = [b1, b2, b3]
+
+        elif act == 'REF_LOAD_TOP':
+            # Luôn nạp vào Page 1 (y=85)
+            new_run = self.create_run_ui_block(650, 85, step['values'])
+            
+            # Nếu tại Page 1 đang có block cũ (do dồn chưa hết), xóa nó
+            if self.merge_input_blocks[0]:
+                old = self.merge_input_blocks[0]
+                self.canvas.delete(old[0]); self.canvas.delete(old[1])
+            
+            self.merge_input_blocks[0] = new_run
 
     def move_block(self, block_obj, tx, ty, callback=None):
         """Hiệu ứng di chuyển mượt mà từ vị trí hiện tại đến (tx, ty)"""

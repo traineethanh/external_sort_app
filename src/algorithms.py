@@ -62,74 +62,69 @@ class ExternalSortEngine:
                     'desc': f"Đưa Run {run} vào {target} (Xóa hình ảnh ở RAM)."
                 })
 
-        # --- PASS 1: MERGE RUNS (Logic Repacking/Trộn từng phần tử) ---
+        # --- PASS 1: MERGE RUNS (Logic Dồn hàng - Shifting) ---
         output_run_count = 0 
-        ram_pages = [[], [], []] # Đại diện cho RAM Page 1, 2, 3
+        ram_pages = [[], [], []] # Page 0 (Top), Page 1 (Mid), Page 2 (Bottom)
 
-        # 1. Nạp lần đầu: Lấy 2 run đầu tiên từ F1 và F2 vào RAM Page 1 & 2
-        if all_runs_f1 and all_runs_f2:
-            ram_pages[0] = all_runs_f1.pop(0)
-            ram_pages[1] = all_runs_f2.pop(0)
-            steps.append({
-                'act': 'MERGE_LOAD_RAM',
-                'r1': ram_pages[0], 'r2': ram_pages[1],
-                'desc': "Nạp 2 Run đầu từ F1, F2 vào RAM Page 1 & 2 (Mỗi trang 2 số)."
-            })
-            io_cost += 2
+        # Nạp lần đầu vào Page 1 và 2 (để chuẩn bị cho logic dồn)
+        if all_runs_f1: ram_pages[0] = all_runs_f1.pop(0)
+        if all_runs_f2: ram_pages[1] = all_runs_f2.pop(0)
+        
+        steps.append({
+            'act': 'MERGE_LOAD_RAM',
+            'r1': ram_pages[0], 'r2': ram_pages[1],
+            'desc': "Nạp dữ liệu ban đầu từ F1, F2 vào RAM."
+        })
 
-        # 2. Vòng lặp trộn chính
-        # Điều kiện: Còn dữ liệu trong RAM hoặc còn Run trong Disk để nạp tiếp
         while any(ram_pages[0:2]) or all_runs_f1 or all_runs_f2:
-            
-            # Gom tất cả số hiện có trong 2 trang RAM đầu vào
+            # 1. Gom và sắp xếp tất cả số đang có trong RAM (trừ Page 3 đang chờ xuất)
             current_in_ram = sorted(ram_pages[0] + ram_pages[1])
-            
-            if not current_in_ram: break # Hết dữ liệu hoàn toàn
+            if not current_in_ram: break
 
-            # Lấy 2 số nhỏ nhất cho vào Page 3 (Output Page)
-            ram_pages[2] = current_in_ram[:2]
-            
-            # Các số còn lại (nếu có) dồn về Page 1 và Page 2
+            # 2. CHIA LẠI TRANG (REPACK & SHIFT DOWN)
+            # Lấy 2 số nhỏ nhất đưa xuống Page 3 (Bottom) để chuẩn bị xuất
+            res_page = current_in_ram[:2]
             remaining = current_in_ram[2:]
-            ram_pages[0] = [remaining[0]] if len(remaining) > 0 else []
-            ram_pages[1] = [remaining[1]] if len(remaining) > 1 else []
+            
+            # Dồn các số lớn hơn (số dư) xuống Page 2 (Mid) và Page 1 (Top)
+            # Theo yêu cầu của bạn: dồn xuống dưới để trống Page 1
+            ram_pages[2] = res_page  # Page 3 (Bottom)
+            ram_pages[1] = [remaining[0]] if len(remaining) > 0 else [] # Page 2 (Mid)
+            ram_pages[0] = [remaining[1]] if len(remaining) > 1 else [] # Page 1 (Top)
 
             steps.append({
-                'act': 'REPACK_RAM',
-                'p1': ram_pages[0], 
-                'p2': ram_pages[1], 
-                'p3': ram_pages[2],
-                'desc': f"Trích {ram_pages[2]} ra Page 3. Tách {remaining} vào Page 1 và Page 2 để đợi nạp thêm."
+                'act': 'REPACK_SHIFT_DOWN',
+                'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': ram_pages[2],
+                'desc': f"Trích {res_page} xuống Page 3. Dồn số dư {remaining} xuống để trống chỗ ở Page 1."
             })
 
-            # Xuất Page 3 xuống Output Disk
+            # 3. XUẤT PAGE 3 XUỐNG DISK
             steps.append({
                 'act': 'WRITE_OUTPUT',
                 'values': ram_pages[2],
                 'output_idx': output_run_count,
-                'desc': f"Đẩy Run nhỏ nhất {ram_pages[2]} xuống Output Disk tại vị trí {output_run_count + 1}."
+                'desc': f"Ghi Run kết quả {ram_pages[2]} vào Output."
             })
             output_run_count += 1
             io_cost += 1
-            ram_pages[2] = [] # Giải phóng Page 3 sau khi xuất
+            ram_pages[2] = [] # Làm trống Page 3
 
-            # Nạp thêm dữ liệu từ Disk vào ô RAM đang trống
-            # Ưu tiên nạp vào Page 1 nếu trống, sau đó đến Page 2
-            if not ram_pages[0] and all_runs_f1:
-                ram_pages[0] = all_runs_f1.pop(0)
+            # 4. NẠP MỚI VÀO PAGE 1 (Ô TRỐNG TRÊN CÙNG)
+            if all_runs_f1 or all_runs_f2:
+                # Ưu tiên lấy từ file còn dữ liệu
+                new_run = all_runs_f1.pop(0) if all_runs_f1 else all_runs_f2.pop(0)
+                
+                # Nạp vào Page 1 (Nếu Page 1 đang có số dư lẻ, ta gộp lại hoặc ghi đè tùy logic mô phỏng)
+                # Ở đây ta gộp với số dư hiện tại của Page 1 để luôn đủ trang
+                ram_pages[0] = sorted(ram_pages[0] + new_run)
+                
                 steps.append({
-                    'act': 'REF_LOAD', 'target_page': 0, 'values': ram_pages[0],
-                    'desc': "RAM Page 1 trống, nạp Run tiếp theo từ F1 lên."
+                    'act': 'REF_LOAD_TOP',
+                    'values': ram_pages[0],
+                    'desc': f"Nạp Run mới từ Disk vào Page 1 để tiếp tục trộn."
                 })
                 io_cost += 1
-            elif not ram_pages[1] and all_runs_f2:
-                ram_pages[1] = all_runs_f2.pop(0)
-                steps.append({
-                    'act': 'REF_LOAD', 'target_page': 1, 'values': ram_pages[1],
-                    'desc': "RAM Page 2 trống, nạp Run tiếp theo từ F2 lên."
-                })
-                io_cost += 1
-            
+                
             # Điều kiện dừng an toàn cho mô phỏng 12 số
             if not any(ram_pages[0:2]) and not all_runs_f1 and not all_runs_f2:
                 break
