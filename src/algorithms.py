@@ -64,10 +64,8 @@ class ExternalSortEngine:
 
         # --- PASS 1: MERGE RUNS (Logic Băng chuyền) ---
         output_run_count = 0 
-        # Khởi tạo RAM 3 trang trống
         ram_pages = [None, None, None] # [Page 1, Page 2, Page 3]
 
-        # Nạp 2 Run đầu tiên vào Page 1 và 2
         if all_runs_f1: ram_pages[0] = all_runs_f1.pop(0)
         if all_runs_f2: ram_pages[1] = all_runs_f2.pop(0)
         
@@ -77,26 +75,30 @@ class ExternalSortEngine:
             'desc': "Nạp 2 Run đầu tiên từ Disk vào RAM Page 1 và 2."
         })
 
-        while any(ram_pages) or all_runs_f1 or all_runs_f2:
-            # Bước A: Tìm Run nhỏ nhất trong các Run đang có ở RAM để đưa xuống Page 3
-            # Giả sử ta so sánh phần tử đầu của các Run để chọn
+        # Vòng lặp chạy cho đến khi RAM trống rỗng và Disk cũng hết
+        while any(p is not None for p in ram_pages) or all_runs_f1 or all_runs_f2:
+            # Bước A: Chọn Run nhỏ nhất để dồn xuống
             idx_min = -1
-            if ram_pages[0] and ram_pages[1]:
-                # So sánh phần tử đầu tiên của 2 Run ở Page 1 và 2
+            # Chỉ so sánh những trang đang có dữ liệu (Page 1 và 2)
+            valid_indices = [i for i in range(2) if ram_pages[i] is not None]
+            
+            if len(valid_indices) == 2:
                 idx_min = 0 if ram_pages[0][0] < ram_pages[1][0] else 1
-            elif ram_pages[0]: idx_min = 0
-            elif ram_pages[1]: idx_min = 1
+            elif len(valid_indices) == 1:
+                idx_min = valid_indices[0]
 
             if idx_min != -1:
-                # Đưa Run nhỏ nhất xuống Page 3
-                ram_pages[2] = ram_pages.pop(idx_min) 
-                ram_pages.insert(0, None) # Đẩy Page 1 trống để tí nữa nạp mới
-                
-                # Hiện tại: Page 3 là Run nhỏ, Page 2 là Run lớn hơn, Page 1 đang None
+                # 1. Lấy Run nhỏ nhất ra
+                chosen_run = ram_pages.pop(idx_min)
+                # 2. Chèn None vào đầu để đẩy các Run còn lại xuống
+                ram_pages.insert(0, None)
+                # 3. Gán Run đã chọn vào Page 3 (Vị trí cuối cùng)
+                ram_pages[2] = chosen_run
+
                 steps.append({
                     'act': 'REPACK_SHIFT_DOWN',
                     'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': ram_pages[2],
-                    'desc': f"Run nhỏ hơn được đưa xuống Page 3. Run còn lại dồn xuống Page 2."
+                    'desc': f"Run {chosen_run} nhỏ hơn được đưa xuống Page 3. Các trang khác dồn xuống."
                 })
 
                 # Bước B: Xuất Page 3
@@ -104,23 +106,25 @@ class ExternalSortEngine:
                     'act': 'WRITE_OUTPUT',
                     'values': ram_pages[2],
                     'output_idx': output_run_count,
-                    'desc': f"Ghi Run {ram_pages[2]} từ Page 3 xuống Disk Output."
+                    'desc': f"Ghi Run {ram_pages[2]} xuống Output. RAM Page 3 trống."
                 })
                 output_run_count += 1
-                ram_pages[2] = None # Page 3 trống sau khi ghi
+                io_cost += 1
+                ram_pages[2] = None # Reset Page 3 sau khi ghi
 
-            # Bước C: Nạp mới vào Page 1 (Nếu còn trống)
+            # Bước C: Nạp mới vào Page 1 (Nếu Page 1 đang trống và Disk còn hàng)
             if ram_pages[0] is None and (all_runs_f1 or all_runs_f2):
                 new_run = all_runs_f1.pop(0) if all_runs_f1 else all_runs_f2.pop(0)
                 ram_pages[0] = new_run
                 steps.append({
                     'act': 'REF_LOAD_TOP',
                     'values': new_run,
-                    'desc': "Nạp Run tiếp theo từ Disk vào Page 1 của RAM."
+                    'desc': f"Nạp Run {new_run} mới vào Page 1."
                 })
-
-            # Điều kiện dừng an toàn cho mô phỏng 12 số
-            if not any(ram_pages[0:2]) and not all_runs_f1 and not all_runs_f2:
+                io_cost += 1
+            
+            # Kiểm tra thoát an toàn: Nếu RAM trống và Disk hết
+            if not any(ram_pages) and not all_runs_f1 and not all_runs_f2:
                 break
 
         steps.append({'act': 'FINISH', 'values': sorted(data), 'io_cost': io_cost, 'desc': "Sắp xếp hoàn tất!"})
