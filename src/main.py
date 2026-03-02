@@ -104,28 +104,24 @@ class ExternalSortApp:
         return [rect, text]
 
     def create_controls(self):
-        # Frame chính chứa tất cả các nút, dùng pack để căn giữa Frame này vào Root
         control_frame = tk.Frame(self.root)
         control_frame.pack(pady=10)
 
-        # Hàng 1: Các nút chức năng nạp và tạo file
-        # Sắp xếp: Nạp File (0) | Tạo 12 số (1) | Tạo 50 số (2) | Reset (3)
         tk.Button(control_frame, text="Nạp File (.bin)", width=15, command=self.choose_file).grid(row=0, column=0, padx=5)
         tk.Button(control_frame, text="Tạo 12 số", width=15, command=self.gen_test_file).grid(row=0, column=1, padx=5)
-        
-        # Nút tạo 50 số (để test tính năng > 12 số)
+        tk.Button(control_frame, text="Reset", width=15, command=self.reset_all, bg="#FFCDD2").grid(row=0, column=3, padx=5)
         tk.Button(control_frame, text="Tạo 50 số", width=15, 
                   command=lambda: self.load_and_init(utils.create_random_input("input_50.bin", 50))).grid(row=0, column=2, padx=5)
-        
-        # Nút Reset nằm ở cột cuối cùng bên phải
-        tk.Button(control_frame, text="Reset", width=15, command=self.reset_all, bg="#FFCDD2").grid(row=0, column=3, padx=5)
 
-        # Hàng 2: Các nút điều khiển mô phỏng (Dùng columnspan=4 để căn giữa so với hàng trên)
-        self.btn_next = tk.Button(control_frame, text="Bước tiếp theo >>", width=25, command=self.step_next, state="disabled", bg="#BBDEFB")
-        self.btn_next.grid(row=1, column=0, columnspan=4, pady=(10, 5))
+        self.btn_next = tk.Button(control_frame, text="Bước tiếp theo >>", width=20, command=self.step_next, state="disabled", bg="#BBDEFB")
+        self.btn_next.grid(row=1, column=1, pady=10)
+        self.btn_auto = tk.Button(self.root, text="Chạy Auto ▶", width=20, command=self.toggle_auto, state="disabled", bg="#C8E6C9")
+        self.btn_auto.pack(pady=5)
 
-        self.btn_auto = tk.Button(control_frame, text="Chạy Auto ▶", width=25, command=self.toggle_auto, state="disabled", bg="#C8E6C9")
-        self.btn_auto.grid(row=2, column=0, columnspan=4, pady=5)
+        self.lbl_io = tk.Label(self.root, text="Tổng Chi Phí I/O: 0", font=("Arial", 13, "bold"), fg="#D32F2F")
+        self.lbl_io.pack()
+        self.status = tk.Label(self.root, text="Trạng thái: Sẵn sàng", font=("Arial", 10, "italic"))
+        self.status.pack()
 
     def choose_file(self):
         path = filedialog.askopenfilename()
