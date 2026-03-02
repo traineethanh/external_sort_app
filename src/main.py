@@ -197,6 +197,42 @@ class ExternalSortApp:
                     self.canvas.delete(b[0])
                     self.canvas.delete(b[1])
                 self.merge_input_blocks = []
+        act = step['act']
+
+        if act == 'REPACK_RAM':
+            # Xóa các block cũ ở RAM
+            for b in self.merge_input_blocks:
+                self.canvas.delete(b[0]); self.canvas.delete(b[1])
+            
+            # Tạo lại 3 block theo vị trí mới
+            b1 = self.create_run_ui_block(650, 85, step['p1']) if step['p1'] else None
+            b2 = self.create_run_ui_block(650, 235, step['p2']) if step['p2'] else None
+            b3 = self.create_run_ui_block(650, 385, step['p3']) # Page 3 luôn có vì vừa sort
+            self.canvas.itemconfig(b3[0], fill="#2ECC71") # Màu xanh cho trang sắp xuất
+            
+            self.merge_input_blocks = [b for b in [b1, b2, b3] if b is not None]
+
+        elif act == 'WRITE_OUTPUT':
+            # Tìm block ở Page 3 (thường là cuối danh sách)
+            if self.merge_input_blocks:
+                res_block = self.merge_input_blocks.pop() 
+                self.move_block(res_block, 60, 430 + (self.current_step_idx * 5)) # Di chuyển xuống Output
+            
+        elif act == 'REF_LOAD':
+            # Nạp thêm vào RAM khi có ô trống
+            target_idx = step['target_page']
+            # Xóa block cũ ở Disk tương ứng (F1 hoặc F2)
+            if target_idx == 0 and self.f1_blocks:
+                old = self.f1_blocks.pop(0)
+                self.canvas.delete(old[0]); self.canvas.delete(old[1])
+            elif target_idx == 1 and self.f2_blocks:
+                old = self.f2_blocks.pop(0)
+                self.canvas.delete(old[0]); self.canvas.delete(old[1])
+
+            # Tạo block mới tại ô RAM trống
+            new_y = 85 if target_idx == 0 else 235
+            new_block = self.create_run_ui_block(650, new_y, step['values'])
+            self.merge_input_blocks.insert(target_idx, new_block)
 
     def move_block(self, block_obj, tx, ty, callback=None):
         """Hiệu ứng di chuyển mượt mà từ vị trí hiện tại đến (tx, ty)"""

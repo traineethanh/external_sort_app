@@ -62,36 +62,69 @@ class ExternalSortEngine:
                     'desc': f"Đưa Run {run} vào {target} (Xóa hình ảnh ở RAM)."
                 })
 
-        # --- PASS 1: MERGE RUNS (Trộn từng phần tử) ---
-        while all_runs_f1 and all_runs_f2:
-            r1 = all_runs_f1.pop(0)
-            r2 = all_runs_f2.pop(0)
-            
-            # Bước 1: Lấy 2 run đầu của 2 buffer disk vào 2 ô đầu RAM
+        # --- PASS 1: MERGE RUNS (Logic Repacking/Trộn từng số) ---
+        # Giả sử ta có all_runs_f1 và all_runs_f2 từ Pass 0
+        
+        output_buffer = []
+        ram_pages = [[], [], []] # RAM Page 1, 2, 3
+        
+        # Nạp lần đầu
+        if all_runs_f1 and all_runs_f2:
+            ram_pages[0] = all_runs_f1.pop(0)
+            ram_pages[1] = all_runs_f2.pop(0)
             steps.append({
                 'act': 'MERGE_LOAD_RAM',
-                'r1': r1, 'r2': r2,
-                'desc': "Lấy 2 Run đầu của F1 và F2 đưa vào 2 trang đầu RAM (Xóa ở Disk)."
+                'r1': ram_pages[0], 'r2': ram_pages[1],
+                'desc': "Nạp 2 Run đầu từ F1, F2 vào RAM Page 1 & 2."
             })
             io_cost += 2
 
-            # Bước 2: Trộn (Merge) 
-            # Mô phỏng: So sánh các phần tử đầu của 2 trang RAM, đưa vào trang RAM thứ 3
-            merged_result = sorted(r1 + r2)
+        # Vòng lặp trộn cho đến khi hết dữ liệu ở Disk và RAM
+        while any(ram_pages[0:2]) or all_runs_f1 or all_runs_f2:
+            # 1. Gom tất cả số hiện có trong RAM (Page 1 & 2) và sắp xếp
+            current_in_ram = sorted(ram_pages[0] + ram_pages[1])
+            
+            # 2. Lấy 2 số nhỏ nhất cho vào Page 3 (Output Buffer)
+            ram_pages[2] = current_in_ram[:2]
+            # 3. Các số còn lại chia vào Page 1 và 2 (Repacking)
+            remaining = current_in_ram[2:]
+            ram_pages[0] = remaining[:2]
+            ram_pages[1] = remaining[2:4]
+
             steps.append({
-                'act': 'MERGE_SORT_RAM',
-                'values': merged_result,
-                'desc': "So sánh phần tử đầu của 2 trang RAM, đưa giá trị nhỏ nhất vào trang RAM thứ 3."
+                'act': 'REPACK_RAM',
+                'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': ram_pages[2],
+                'desc': "Sắp xếp RAM: 2 số nhỏ nhất vào Page 3, các số còn lại dồn về Page 1 & 2."
             })
 
-            # Bước 3: Đưa kết quả vào Output
+            # 4. Đẩy Page 3 xuống Disk Output
             steps.append({
                 'act': 'WRITE_OUTPUT',
-                'values': merged_result,
-                'io_cost': io_cost + 1,
-                'desc': "Đưa Run kết quả từ RAM xuống vùng Output Disk (Xóa ở RAM)."
+                'values': ram_pages[2],
+                'desc': f"Đẩy Run nhỏ nhất {ram_pages[2]} xuống Output Disk."
             })
             io_cost += 1
+            ram_pages[2] = [] # Reset page 3
+
+            # 5. Nạp thêm dữ liệu vào ô RAM đang trống (nếu có)
+            if not ram_pages[0] and all_runs_f1:
+                ram_pages[0] = all_runs_f1.pop(0)
+                steps.append({
+                    'act': 'REF_LOAD', 'target_page': 0, 'values': ram_pages[0],
+                    'desc': "RAM Page 1 trống, nạp Run tiếp theo từ F1."
+                })
+                io_cost += 1
+            elif not ram_pages[1] and all_runs_f2:
+                ram_pages[1] = all_runs_f2.pop(0)
+                steps.append({
+                    'act': 'REF_LOAD', 'target_page': 1, 'values': ram_pages[1],
+                    'desc': "RAM Page 2 trống, nạp Run tiếp theo từ F2."
+                })
+                io_cost += 1
+            
+            # Điều kiện dừng an toàn cho mô phỏng 12 số
+            if not any(ram_pages[0:2]) and not all_runs_f1 and not all_runs_f2:
+                break
 
         steps.append({'act': 'FINISH', 'values': sorted(data), 'io_cost': io_cost, 'desc': "Sắp xếp hoàn tất!"})
         return steps
