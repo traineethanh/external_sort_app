@@ -188,25 +188,13 @@ class ExternalSortApp:
             self.merge_input_blocks = [b1, b2, b3]
 
         elif act == 'REPACK_SHIFT_DOWN':
-            # 1. Xóa sạch 3 Page trong RAM hiện tại trước khi vẽ trạng thái mới
-            if hasattr(self, 'merge_input_blocks'):
-                for b in self.merge_input_blocks:
-                    if b: 
-                        self.canvas.delete(b[0]) # Xóa khung
-                        self.canvas.delete(b[1]) # Xóa chữ
-            
-            self.merge_input_blocks = [None, None, None]
-
-            # 2. Vẽ lại 3 tầng dựa trên dữ liệu 'p1', 'p2', 'p3' từ Engine gửi sang
-            # Tọa độ y chuẩn: Page 1 (85), Page 2 (235), Page 3 (385)
+            self.clear_ram_visuals() # Dọn sạch trước
+            # Sau đó mới vẽ p1, p2, p3 mới từ Engine gửi qua
             y_coords = [85, 235, 385]
             p_data = [step.get('p1'), step.get('p2'), step.get('p3')]
-            
             for i in range(3):
                 if p_data[i]:
                     self.merge_input_blocks[i] = self.create_run_ui_block(650, y_coords[i], p_data[i])
-                    if i == 2: # Page 3 là "Cửa ra", cho màu khác biệt
-                        self.canvas.itemconfig(self.merge_input_blocks[i][0], fill="#2ECC71")
         elif act == 'WRITE_OUTPUT':
             if self.merge_input_blocks[2]:
                 res_block = self.merge_input_blocks[2]
@@ -219,21 +207,23 @@ class ExternalSortApp:
                 self.canvas.itemconfig(res_block[0], fill="#D32F2F")
 
         elif act == 'REF_LOAD_TOP':
-            # Xóa hình trên Disk F1/F2
-            if self.f1_blocks:
-                old_f = self.f1_blocks.pop(0)
-                self.canvas.delete(old_f[0]); self.canvas.delete(old_f[1])
-            elif self.f2_blocks:
-                old_f = self.f2_blocks.pop(0)
-                self.canvas.delete(old_f[0]); self.canvas.delete(old_f[1])
-
-            # XÓA PAGE 1 TRONG RAM TRƯỚC KHI NẠP
+            # 1. Xóa hình ở Disk (như cũ)
+            # 2. Xóa riêng ô Page 1 để nạp mới mà không ảnh hưởng Page 2, 3
             if self.merge_input_blocks[0]:
-                old_p1 = self.merge_input_blocks[0]
-                self.canvas.delete(old_p1[0]); self.canvas.delete(old_p1[1])
-            
-            # Nạp mới
+                self.canvas.delete(self.merge_input_blocks[0][0])
+                self.canvas.delete(self.merge_input_blocks[0][1])
+
+            # 3. Vẽ cái mới vào Page 1
             self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, step['values'])
+
+            def clear_ram_visuals(self):
+                """Xóa sạch sành sanh mọi thứ đang hiện diện trong 3 ô RAM"""
+                if hasattr(self, 'merge_input_blocks'):
+                    for block in self.merge_input_blocks:
+                        if block: # block là list [rect_id, text_id]
+                            self.canvas.delete(block[0])
+                            self.canvas.delete(block[1])
+                self.merge_input_blocks = [None, None, None]
 
     def move_block(self, block_obj, tx, ty, callback=None):
         """Hiệu ứng di chuyển mượt mà từ vị trí hiện tại đến (tx, ty)"""
