@@ -66,9 +66,10 @@ class ExternalSortApp:
             self.canvas.create_text(720, 50 + i*150, text=f"RAM Page {i+1}", fill="#28a745", font=("Arial", 9, "bold"))
 
     def create_run_ui_block(self, x, y, values):
-        """Tạo khối Run gồm 2 phần tử cách nhau bằng dấu phẩy"""
+        """Tạo khối UI linh hoạt cho cả 1 hoặc 2 phần tử"""
+        if not values: return None
         val_str = ", ".join([str(int(v)) for v in values])
-        # Hình chữ nhật bo tròn nhẹ (giả lập bằng polygon hoặc rect)
+        # Vẽ block
         rect = self.canvas.create_rectangle(x, y, x+100, y+45, fill="#4A4A4A", outline="white", width=2)
         text = self.canvas.create_text(x+50, y+22, text=val_str, fill="#FFCC00", font=("Arial", 10, "bold"))
         return [rect, text]
@@ -213,10 +214,10 @@ class ExternalSortApp:
             self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, step['values'])
 
     def clear_ram_visuals(self):
-        """Xóa sạch mọi thứ đang hiện diện trong 3 ô RAM"""
+        """Hàm xóa RAM phải nằm riêng biệt để gọi ở mỗi bước dịch chuyển"""
         if hasattr(self, 'merge_input_blocks'):
             for block in self.merge_input_blocks:
-                if block: 
+                if block:
                     self.canvas.delete(block[0])
                     self.canvas.delete(block[1])
         self.merge_input_blocks = [None, None, None]
