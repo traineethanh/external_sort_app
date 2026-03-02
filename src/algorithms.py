@@ -14,50 +14,60 @@ class ExternalSortEngine:
         
         if N > 12: return [] # Không mô phỏng nếu n > 12
 
-        # --- PASS 0: TẠO CÁC RUN NHỎ (Đúng chuẩn Repacking) ---
-        # Thay vì nạp 6, ta nạp từng 2 số để tạo ra các thực thể "Run" riêng biệt trên Disk
+        # --- PASS 0: TẠO RUNS (Giữ nguyên nạp 6 phần tử) ---
         all_runs_f1 = []
         all_runs_f2 = []
         
-        for i in range(0, N, 2):
-            chunk = data[i : i + 2]
-            sorted_run = sorted(chunk)
+        for i in range(0, N, 6):
+            chunk = data[i : i + 6]
+            chunk_indices = list(range(i, min(i + 6, N)))
             
-            # 1. Nạp vào RAM (Sử dụng Page 1 làm lối vào)
+            # Bước 1: Nạp 6 số vào 3 trang RAM
             steps.append({
                 'act': 'LOAD_RAM', 
                 'values': chunk, 
-                'indices': list(range(i, min(i + 2, N))), 
-                'desc': f"Pass 0: Nạp {chunk} vào RAM Page 1."
+                'indices': chunk_indices, 
+                'desc': f"Pass 0: Nạp 6 số từ Disk vào 3 trang RAM."
             })
             
-            # 2. Sắp xếp nội bộ
+            # Bước 2: Sắp xếp nội bộ 6 số đó
+            sorted_chunk = sorted(chunk)
             steps.append({
                 'act': 'SORT_RAM', 
-                'values': sorted_run, 
-                'desc': "Sắp xếp nội bộ Run."
+                'values': sorted_chunk, 
+                'desc': "Sắp xếp nội bộ 6 số trong RAM."
             })
-            io_cost += 1 # 1 lần đọc
+            io_cost += math.ceil(len(chunk) / self.page_size)
             
-            # 3. Ghi ra Disk (F1 hoặc F2)
-            target = 'F1' if (i // 2) % 2 == 0 else 'F2'
-            r_idx = (i // 2) // 2
-            if target == 'F1': all_runs_f1.append(sorted_run)
-            else: all_runs_f2.append(sorted_run)
-            
-            io_cost += 1 # 1 lần ghi
-            steps.append({
-                'act': 'WRITE_F_BUFFER', 
-                'values': sorted_run, 'target': target, 'run_idx': r_idx, 
-                'io_cost': io_cost,
-                'desc': f"Lưu Run {sorted_run} vào {target}."
-            })
+            # Bước 3: Chia 6 số đã sort thành 3 run (mỗi run 2 số) và đẩy vào F1/F2
+            for j in range(0, len(sorted_chunk), 2):
+                run = sorted_chunk[j : j + 2]
+                io_cost += 1
+                
+                if len(all_runs_f1) <= len(all_runs_f2):
+                    target = 'F1'
+                    r_idx = len(all_runs_f1)
+                    all_runs_f1.append(run)
+                else:
+                    target = 'F2'
+                    r_idx = len(all_runs_f2)
+                    all_runs_f2.append(run)
+
+                steps.append({
+                    'act': 'WRITE_F_BUFFER', 
+                    'values': run, 
+                    'target': target, 
+                    'run_idx': r_idx, 
+                    'io_cost': io_cost, 
+                    'desc': f"Đưa Run {run} vào {target}."
+                })
 
         # --- PASS 1: BĂNG CHUYỀN 3 TẦNG (REPACKING) ---
+        # Đây là phần bạn cần: Page 3 chứa 2 số nhỏ nhất, sau đó dịch chuyển.
         output_idx = 0
         ram_pages = [None, None, None] # [Page 1, Page 2, Page 3]
 
-        # 1. KHỞI TẠO: Nạp 2 run đầu tiên từ Disk vào RAM
+        # 1. Nạp 2 run đầu tiên vào Page 1 và Page 2
         if all_runs_f1: ram_pages[0] = all_runs_f1.pop(0)
         if all_runs_f2: ram_pages[1] = all_runs_f2.pop(0)
         io_cost += 2
@@ -66,31 +76,30 @@ class ExternalSortEngine:
             'act': 'REPACK_SHIFT_DOWN',
             'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': ram_pages[2],
             'io_cost': io_cost,
-            'desc': "Bắt đầu Pass 1: Nạp Run từ F1 vào Page 1, F2 vào Page 2."
+            'desc': "Pass 1 bắt đầu: Nạp 2 Run vào Page 1 & 2."
         })
 
-        # Vòng lặp điều phối Băng chuyền
         while any(p is not None for p in ram_pages) or all_runs_f1 or all_runs_f2:
             
-            # BƯỚC 1: SO SÁNH VÀ SẮP XẾP THỨ TỰ TRONG RAM
-            # (Tìm Run có giá trị nhỏ nhất để đưa xuống Page 3 - Cửa ra)
+            # BƯỚC 1: SORT TRONG RAM ĐỂ ĐẨY RUN NHỎ NHẤT XUỐNG PAGE 3
             current_runs = [p for p in ram_pages if p is not None]
-            current_runs.sort(key=lambda x: x[0]) # Sắp xếp các khối dựa trên số đầu tiên
+            # Sắp xếp các Run dựa trên số nhỏ nhất của mỗi Run
+            current_runs.sort(key=lambda x: x[0]) 
             
-            # Phân bổ lại vị trí: Nhỏ nhất -> Page 3, Lớn nhất -> Page 1
+            # Cập nhật lại các Page theo đúng ý bạn: Nhỏ nhất nằm ở Page 3
             new_ram = [None, None, None]
-            if len(current_runs) >= 1: new_ram[2] = current_runs[0] 
-            if len(current_runs) >= 2: new_ram[1] = current_runs[1]
+            if len(current_runs) >= 1: new_ram[2] = current_runs[0] # Run nhỏ nhất (2 số)
+            if len(current_runs) >= 2: new_ram[1] = current_runs[1] 
             if len(current_runs) >= 3: new_ram[0] = current_runs[2]
             ram_pages = new_ram
 
             steps.append({
                 'act': 'REPACK_SHIFT_DOWN',
                 'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': ram_pages[2],
-                'desc': "So sánh: Dịch chuyển Run nhỏ nhất xuống Page 3 để chuẩn bị xuất."
+                'desc': "Sắp xếp: Run chứa 2 số nhỏ nhất được đưa xuống Page 3."
             })
 
-            # BƯỚC 2: XUẤT PAGE 3 RA OUTPUT
+            # BƯỚC 2: CHUYỂN RUN NHỎ NHẤT (PAGE 3) QUA OUTPUT
             if ram_pages[2]:
                 io_cost += 1
                 steps.append({
@@ -98,13 +107,13 @@ class ExternalSortEngine:
                     'values': ram_pages[2],
                     'output_idx': output_idx,
                     'io_cost': io_cost,
-                    'desc': f"Xuất Run {ram_pages[2]} từ Page 3 ra Output."
+                    'desc': f"Chuyển run nhỏ nhất {ram_pages[2]} từ Page 3 ra Output."
                 })
                 output_idx += 1
-                ram_pages[2] = None # Làm trống cửa ra
+                ram_pages[2] = None
 
-            # BƯỚC 3: DỊCH CHUYỂN XUỐNG (SHIFTING)
-            # Đây là bước "Dịch chuyển 2 run trên xuống dưới 1 run" như bạn yêu cầu
+            # BƯỚC 3: DỊCH CHUYỂN 2 RUN TRÊN XUỐNG DƯỚI 1 RUN
+            # Page 2 -> 3, Page 1 -> 2
             ram_pages[2] = ram_pages[1]
             ram_pages[1] = ram_pages[0]
             ram_pages[0] = None
@@ -112,25 +121,21 @@ class ExternalSortEngine:
             steps.append({
                 'act': 'REPACK_SHIFT_DOWN',
                 'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': ram_pages[2],
-                'desc': "Dịch chuyển tầng: Đẩy các Run phía trên xuống dưới 1 bậc."
+                'desc': "Dịch chuyển 2 run tầng trên xuống dưới 1 bậc."
             })
 
             # BƯỚC 4: TIẾP TỤC LẤY RUN TỪ DISK (NẠP VÀO PAGE 1)
             if all_runs_f1 or all_runs_f2:
-                # Chọn Run tiếp theo từ Disk để nạp vào lối vào đang trống (Page 1)
-                if all_runs_f1:
-                    new_run = all_runs_f1.pop(0)
-                else:
-                    new_run = all_runs_f2.pop(0)
-                
+                # Ưu tiên lấy từ F1 rồi đến F2 để lấp đầy lối vào
+                new_run = all_runs_f1.pop(0) if all_runs_f1 else all_runs_f2.pop(0)
                 ram_pages[0] = new_run
                 io_cost += 1
                 steps.append({
                     'act': 'REF_LOAD_TOP',
                     'values': new_run,
                     'io_cost': io_cost,
-                    'desc': f"Nạp Run mới {new_run} từ Disk vào Page 1 đang trống."
+                    'desc': f"Tiếp tục lấy Run {new_run} từ Disk nạp vào Page 1."
                 })
 
-        steps.append({'act': 'FINISH', 'desc': "Sắp xếp hoàn tất theo cơ chế Repacking!", 'io_cost': io_cost})
+        steps.append({'act': 'FINISH', 'desc': "Hoàn thành sắp xếp!", 'io_cost': io_cost})
         return steps
