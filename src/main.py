@@ -188,23 +188,20 @@ class ExternalSortApp:
             self.merge_input_blocks = [b1, b2, b3]
 
         elif act == 'REPACK_SHIFT_DOWN':
-            # 1. Xóa sạch bóng dáng các block cũ trong RAM trước khi dồn
+            # Xóa toàn bộ RAM cũ
             for b in self.merge_input_blocks:
-                if b:
-                    self.canvas.delete(b[0])
-                    self.canvas.delete(b[1])
+                if b: self.canvas.delete(b[0]); self.canvas.delete(b[1])
             
-            # 2. Reset mảng quản lý
             self.merge_input_blocks = [None, None, None]
 
-            # 3. Vẽ lại theo tọa độ dồn hàng (Sử dụng dữ liệu p1, p2, p3 từ Engine)
-            # Page 1 (85), Page 2 (235), Page 3 (385)
-            if step.get('p1'): self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, step['p1'])
-            if step.get('p2'): self.merge_input_blocks[1] = self.create_run_ui_block(650, 235, step['p2'])
-            if step.get('p3'): 
+            # Vẽ lại theo đúng Page được gửi từ Engine
+            # p1: Top (85), p2: Mid (235), p3: Bottom (385)
+            if step['p1']: self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, step['p1'])
+            if step['p2']: self.merge_input_blocks[1] = self.create_run_ui_block(650, 235, step['p2'])
+            if step['p3']: 
                 self.merge_input_blocks[2] = self.create_run_ui_block(650, 385, step['p3'])
-                self.canvas.itemconfig(self.merge_input_blocks[2][0], fill="#2ECC71") # Màu xanh cho số nhỏ chuẩn bị xuất
-
+                self.canvas.itemconfig(self.merge_input_blocks[2][0], fill="#2ECC71") # Run nhỏ nhất
+                
         elif act == 'WRITE_OUTPUT':
             # Chỉ lấy Page 3 ra để di chuyển, để lại Page 1 & 2
             if self.merge_input_blocks[2]:
@@ -235,7 +232,7 @@ class ExternalSortApp:
             
             # 3. Nạp run mới vào đúng slot Page 1 (y=85)
             self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, step['values'])
-            
+
     def move_block(self, block_obj, tx, ty, callback=None):
         """Hiệu ứng di chuyển mượt mà từ vị trí hiện tại đến (tx, ty)"""
         r_id, t_id = block_obj
