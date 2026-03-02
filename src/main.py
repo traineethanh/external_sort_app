@@ -189,7 +189,17 @@ class ExternalSortApp:
             self.merge_input_blocks = [b1, b2, b3]
 
         elif act == 'REPACK_SHIFT_DOWN':
-            self.clear_ram_visuals() # Bây giờ gọi sẽ không bị lỗi nữa
+            # Xử lý xóa block ở Disk nếu đây là bước khởi đầu Pass 1
+            sources_to_clear = step.get('clear_sources', [])
+            for src in sources_to_clear:
+                if src == "F1" and self.f1_blocks:
+                    b = self.f1_blocks.pop(0)
+                    self.canvas.delete(b[0]); self.canvas.delete(b[1])
+                elif src == "F2" and self.f2_blocks:
+                    b = self.f2_blocks.pop(0)
+                    self.canvas.delete(b[0]); self.canvas.delete(b[1])
+
+            self.clear_ram_visuals() # Xóa RAM cũ
             y_coords = [85, 235, 385]
             p_data = [step.get('p1'), step.get('p2'), step.get('p3')]
             for i in range(3):
@@ -208,6 +218,19 @@ class ExternalSortApp:
                 self.canvas.itemconfig(res_block[0], fill="#D32F2F")
 
         elif act == 'REF_LOAD_TOP':
+            # --- PHẦN FIX LỖI: Xóa block ở Disk khi nạp ---
+            source = step.get('source')
+            if source == "F1" and self.f1_blocks:
+                b = self.f1_blocks.pop(0)
+                self.canvas.delete(b[0]) # Xóa hình chữ nhật
+                self.canvas.delete(b[1]) # Xóa chữ
+            elif source == "F2" and self.f2_blocks:
+                b = self.f2_blocks.pop(0)
+                self.canvas.delete(b[0])
+                self.canvas.delete(b[1])
+            # ------------------------------------------
+
+            # Xóa Page 1 cũ trong RAM và vẽ cái mới (giữ nguyên code cũ của bạn)
             if self.merge_input_blocks[0]:
                 self.canvas.delete(self.merge_input_blocks[0][0])
                 self.canvas.delete(self.merge_input_blocks[0][1])

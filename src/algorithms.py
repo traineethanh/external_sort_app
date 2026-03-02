@@ -89,14 +89,18 @@ class ExternalSortEngine:
                 if all_runs_f1 and all_runs_f2:
                     if all_runs_f1[0][0] <= all_runs_f2[0][0]:
                         new_run = all_runs_f1.pop(0)
+                        source = "F1" # Thêm dòng này
                     else:
                         new_run = all_runs_f2.pop(0)
+                        source = "F2" # Thêm dòng này
                 else:
+                    source = "F1" if all_runs_f1 else "F2" # Thêm dòng này
                     new_run = all_runs_f1.pop(0) if all_runs_f1 else all_runs_f2.pop(0)
                 
                 ram_pages[0] = new_run
                 io_cost += 1
-                steps.append({'act': 'REF_LOAD_TOP', 'values': new_run, 'io_cost': io_cost, 'desc': f"Nạp Run {new_run} từ Disk vào Page 1."})
+                # Gửi thêm source vào step
+                steps.append({'act': 'REF_LOAD_TOP', 'values': new_run, 'source': source, 'io_cost': io_cost, 'desc': f"Nạp Run {new_run} từ {source} vào Page 1."})
 
         steps.append({'act': 'FINISH', 'desc': "Hoàn thành!", 'io_cost': io_cost})
         return steps
