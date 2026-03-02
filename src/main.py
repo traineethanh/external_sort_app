@@ -127,14 +127,12 @@ class ExternalSortApp:
 
         # --- GIAI ĐOẠN 0: TẠO RUN ---
         if act == 'LOAD_RAM':
-            # Xóa số lẻ ở Input Area
             indices = step.get('indices', [])
             for idx in indices:
                 if self.raw_data_texts[idx]:
                     self.canvas.delete(self.raw_data_texts[idx])
                     self.raw_data_texts[idx] = None
             
-            # Tạo block mới trong RAM (Dữ liệu chưa sort)
             vals = step['values']
             for i in range(0, len(vals), 2):
                 chunk = vals[i:i+2]
@@ -142,109 +140,77 @@ class ExternalSortApp:
                 self.run_blocks.append(block)
 
         elif act == 'SORT_RAM':
-            # Cập nhật giá trị đã được SORT lên giao diện
             vals = step['values']
             for i in range(0, len(vals), 2):
                 new_txt = ", ".join([str(int(v)) for v in vals[i:i+2]])
-                # Đổi màu xanh để người dùng thấy đã sort xong
                 self.canvas.itemconfig(self.run_blocks[i//2][0], fill="#3498DB") 
                 self.canvas.itemconfig(self.run_blocks[i//2][1], text=new_txt)
 
         elif act == 'WRITE_F_BUFFER':
-            target = step['target']
-            r_idx = step['run_idx']
-            tx = 55 + r_idx*125
-            ty = 220 if target == "F1" else 320 # Khớp với tọa độ tĩnh
-            
+            target, r_idx = step['target'], step['run_idx']
+            tx, ty = 55 + r_idx*125, (220 if target == "F1" else 320)
             if self.run_blocks:
                 b = self.run_blocks.pop(0)
-                # Di chuyển mượt mà xuống Disk
                 self.move_block(b, tx, ty)
-                
-                # Lưu vào danh sách tương ứng để sau này xóa khi Merge
                 if target == "F1": self.f1_blocks.append(b)
                 else: self.f2_blocks.append(b)
 
-        # --- GIAI ĐOẠN 2: TRỘN (MERGE) ---
+        # --- GIAI ĐOẠN 2: TRỘN (MERGE) - LOGIC REPACKING ---
         elif act == 'MERGE_LOAD_RAM':
-            # XÓA hình ảnh cũ ở F1 và F2 trên Disk (vì đã được nạp lên RAM)
+            # Xóa trên Disk
             if self.f1_blocks:
-                old_f1 = self.f1_blocks.pop(0)
-                self.canvas.delete(old_f1[0]); self.canvas.delete(old_f1[1])
+                old = self.f1_blocks.pop(0)
+                self.canvas.delete(old[0]); self.canvas.delete(old[1])
             if self.f2_blocks:
-                old_f2 = self.f2_blocks.pop(0)
-                self.canvas.delete(old_f2[0]); self.canvas.delete(old_f2[1])
-
-            # Tạo 2 block mới ở 2 ô đầu RAM (Dữ liệu đầu vào của Merge)
+                old = self.f2_blocks.pop(0)
+                self.canvas.delete(old[0]); self.canvas.delete(old[1])
+            # Tạo mới trên RAM (Page 1 & 2)
             b1 = self.create_run_ui_block(650, 85, step['r1'])
             b2 = self.create_run_ui_block(650, 235, step['r2'])
-            self.merge_input_blocks = [b1, b2]
+            self.merge_input_blocks = [b1, b2, None] # Slot 3 trống
 
-        elif act == 'MERGE_SORT_RAM':
-            # Hiển thị kết quả trộn ở ô RAM thứ 3 (màu xanh lá)
-            b_out = self.create_run_ui_block(650, 385, step['values'])
-            self.canvas.itemconfig(b_out[0], fill="#2ECC71") 
-            self.merge_input_blocks.append(b_out)
-
-        elif act == 'WRITE_OUTPUT':
-            # Xóa các block nguồn ở RAM sau khi trộn xong
-            if len(self.merge_input_blocks) >= 3:
-                res_block = self.merge_input_blocks.pop(2) # Lấy block kết quả
-                self.move_block(res_block, 60, 430) # Đẩy xuống Output Area
-                
-                # Xóa 2 block nguồn trong RAM
-                for b in self.merge_input_blocks:
-                    self.canvas.delete(b[0])
-                    self.canvas.delete(b[1])
-                self.merge_input_blocks = []
-        act = step['act']
-
-        if act == 'REPACK_RAM':
-            # Xóa các block cũ trong RAM để vẽ lại trạng thái mới
+        elif act == 'REPACK_RAM':
+            # 1. Xóa sạch 3 ô RAM hiện tại để vẽ lại trạng thái Repack
             for b in self.merge_input_blocks:
-                if b: 
+                if b:
                     self.canvas.delete(b[0])
                     self.canvas.delete(b[1])
             
-            self.merge_input_blocks = []
-            # Tạo lại các block dựa trên dữ liệu đã tách
-            # Lưu ý: create_run_ui_block đã nhận đầu vào là một list (dù có 1 hay 2 phần tử)
+            # 2. Vẽ lại trạng thái mới (Tách số dư)
             b1 = self.create_run_ui_block(650, 85, step['p1']) if step['p1'] else None
             b2 = self.create_run_ui_block(650, 235, step['p2']) if step['p2'] else None
-            b3 = self.create_run_ui_block(650, 385, step['p3']) # Page 3 (Output)
+            b3 = self.create_run_ui_block(650, 385, step['p3']) # Page 3 luôn có dữ liệu để xuất
             
-            self.canvas.itemconfig(b3[0], fill="#2ECC71") # Highlight trang sắp xuất
-            
+            self.canvas.itemconfig(b3[0], fill="#2ECC71") # Màu xanh lá cho Page 3
             self.merge_input_blocks = [b1, b2, b3]
 
         elif act == 'WRITE_OUTPUT':
-            if len(self.merge_input_blocks) >= 3:
-                # Chỉ lấy block cuối cùng (Page 3) để di chuyển
-                res_block = self.merge_input_blocks.pop(2) 
-        
-                out_idx = step.get('output_idx', 0)
-                tx = 55 + out_idx * 125 
-                ty = 435
-                self.move_block(res_block, tx, ty)
+            # Chỉ lấy Page 3 ra để di chuyển
+            if len(self.merge_input_blocks) == 3 and self.merge_input_blocks[2]:
+                res_block = self.merge_input_blocks[2]
+                self.merge_input_blocks[2] = None # Làm trống Page 3 trong danh sách
                 
-                # Đổi màu block thành màu đỏ hoặc cam để phân biệt là kết quả cuối
+                out_idx = step.get('output_idx', 0)
+                tx, ty = 55 + out_idx * 125, 435
+                self.move_block(res_block, tx, ty)
                 self.canvas.itemconfig(res_block[0], fill="#D32F2F")
-         
-        elif act == 'REF_LOAD':
-            # Nạp thêm vào RAM khi có ô trống
-            target_idx = step['target_page']
-            # Xóa block cũ ở Disk tương ứng (F1 hoặc F2)
-            if target_idx == 0 and self.f1_blocks:
-                old = self.f1_blocks.pop(0)
-                self.canvas.delete(old[0]); self.canvas.delete(old[1])
-            elif target_idx == 1 and self.f2_blocks:
-                old = self.f2_blocks.pop(0)
-                self.canvas.delete(old[0]); self.canvas.delete(old[1])
 
-            # Tạo block mới tại ô RAM trống
-            new_y = 85 if target_idx == 0 else 235
-            new_block = self.create_run_ui_block(650, new_y, step['values'])
-            self.merge_input_blocks.insert(target_idx, new_block)
+        elif act == 'REF_LOAD':
+            t_idx = step['target_page'] # 0 hoặc 1
+            # Xóa block tương ứng trên Disk
+            if t_idx == 0 and self.f1_blocks:
+                old = self.f1_blocks.pop(0); self.canvas.delete(old[0]); self.canvas.delete(old[1])
+            elif t_idx == 1 and self.f2_blocks:
+                old = self.f2_blocks.pop(0); self.canvas.delete(old[0]); self.canvas.delete(old[1])
+            
+            # Xóa block cũ ở ô RAM đó (nếu có - thường là số dư đứng 1 mình)
+            if self.merge_input_blocks[t_idx]:
+                old_ram = self.merge_input_blocks[t_idx]
+                self.canvas.delete(old_ram[0]); self.canvas.delete(old_ram[1])
+            
+            # Nạp block mới vào ô RAM mục tiêu
+            new_y = 85 if t_idx == 0 else 235
+            self.merge_input_blocks[t_idx] = self.create_run_ui_block(650, new_y, step['values'])
 
     def move_block(self, block_obj, tx, ty, callback=None):
         """Hiệu ứng di chuyển mượt mà từ vị trí hiện tại đến (tx, ty)"""
