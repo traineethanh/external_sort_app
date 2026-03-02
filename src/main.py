@@ -188,13 +188,13 @@ class ExternalSortApp:
             self.merge_input_blocks = [b1, b2, b3]
 
         elif act == 'REPACK_SHIFT_DOWN':
-            self.clear_ram_visuals() # Dọn sạch trước
-            # Sau đó mới vẽ p1, p2, p3 mới từ Engine gửi qua
+            self.clear_ram_visuals() # Bây giờ gọi sẽ không bị lỗi nữa
             y_coords = [85, 235, 385]
             p_data = [step.get('p1'), step.get('p2'), step.get('p3')]
             for i in range(3):
                 if p_data[i]:
                     self.merge_input_blocks[i] = self.create_run_ui_block(650, y_coords[i], p_data[i])
+
         elif act == 'WRITE_OUTPUT':
             if self.merge_input_blocks[2]:
                 res_block = self.merge_input_blocks[2]
@@ -207,23 +207,19 @@ class ExternalSortApp:
                 self.canvas.itemconfig(res_block[0], fill="#D32F2F")
 
         elif act == 'REF_LOAD_TOP':
-            # 1. Xóa hình ở Disk (như cũ)
-            # 2. Xóa riêng ô Page 1 để nạp mới mà không ảnh hưởng Page 2, 3
             if self.merge_input_blocks[0]:
                 self.canvas.delete(self.merge_input_blocks[0][0])
                 self.canvas.delete(self.merge_input_blocks[0][1])
-
-            # 3. Vẽ cái mới vào Page 1
             self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, step['values'])
 
-            def clear_ram_visuals(self):
-                """Xóa sạch sành sanh mọi thứ đang hiện diện trong 3 ô RAM"""
-                if hasattr(self, 'merge_input_blocks'):
-                    for block in self.merge_input_blocks:
-                        if block: # block là list [rect_id, text_id]
-                            self.canvas.delete(block[0])
-                            self.canvas.delete(block[1])
-                self.merge_input_blocks = [None, None, None]
+    def clear_ram_visuals(self):
+        """Xóa sạch mọi thứ đang hiện diện trong 3 ô RAM"""
+        if hasattr(self, 'merge_input_blocks'):
+            for block in self.merge_input_blocks:
+                if block: 
+                    self.canvas.delete(block[0])
+                    self.canvas.delete(block[1])
+        self.merge_input_blocks = [None, None, None]
 
     def move_block(self, block_obj, tx, ty, callback=None):
         """Hiệu ứng di chuyển mượt mà từ vị trí hiện tại đến (tx, ty)"""
