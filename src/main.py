@@ -1,7 +1,28 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, scrolledtext
 import utils
 from algorithms import ExternalSortEngine
+
+from tkinter import scrolledtext
+
+class OutputWindow(tk.Toplevel):
+    """Cửa sổ phụ hiển thị kết quả cho file dữ liệu lớn"""
+    def __init__(self, parent, file_path):
+        super().__init__(parent)
+        self.title("Kết quả Sắp xếp (Dữ liệu lớn)")
+        self.geometry("400x500")
+        
+        tk.Label(self, text="Dữ liệu đã được sắp xếp hoàn tất:", font=("Arial", 11, "bold")).pack(pady=10)
+        
+        # Khung văn bản có thanh cuộn
+        self.txt_area = scrolledtext.ScrolledText(self, width=40, height=20, font=("Courier New", 10))
+        self.txt_area.pack(padx=20, pady=10)
+        
+        data = utils.read_binary_file(file_path)
+        content = "\n".join([f"Vị trí {i+1:03d}:  {int(v)}" for i, v in enumerate(data)])
+        
+        self.txt_area.insert(tk.END, content)
+        self.txt_area.config(state="disabled") # Chỉ cho đọc
 
 class ExternalSortApp:
     def __init__(self, root):
@@ -12,6 +33,7 @@ class ExternalSortApp:
         # Engine và biến logic
         self.engine = ExternalSortEngine(buffer_pages=3)
         self.input_file_path = None 
+        self.is_auto = False 
         self.all_steps = []
         self.current_step_idx = -1
         self.run_blocks = [] 
@@ -88,9 +110,13 @@ class ExternalSortApp:
         tk.Button(control_frame, text="Nạp File (.bin)", width=15, command=self.choose_file).grid(row=0, column=0, padx=5)
         tk.Button(control_frame, text="Tạo 12 số", width=15, command=self.gen_test_file).grid(row=0, column=1, padx=5)
         tk.Button(control_frame, text="Reset", width=15, command=self.reset_all, bg="#FFCDD2").grid(row=0, column=2, padx=5)
+        tk.Button(control_frame, text="Tạo 50 số", width=12, 
+                  command=lambda: self.load_and_init(utils.create_random_input("input_50.bin", 50))).grid(row=0, column=2, padx=5)
 
         self.btn_next = tk.Button(control_frame, text="Bước tiếp theo >>", width=20, command=self.step_next, state="disabled", bg="#BBDEFB")
         self.btn_next.grid(row=1, column=1, pady=10)
+        self.btn_auto = tk.Button(self.root, text="Chạy Auto ▶", width=20, command=self.toggle_auto, state="disabled", bg="#C8E6C9")
+        self.btn_auto.pack(pady=5)
 
         self.lbl_io = tk.Label(self.root, text="Tổng Chi Phí I/O: 0", font=("Arial", 13, "bold"), fg="#D32F2F")
         self.lbl_io.pack()
@@ -110,12 +136,15 @@ class ExternalSortApp:
         self.input_file_path = path
         data = utils.read_binary_file(path)
         
+        # XỬ LÝ DỮ LIỆU LỚN (> 12 số)
         if len(data) > 12:
-            self.status.config(text="Dữ liệu lớn: Đã xuất file trực tiếp.")
-            utils.write_binary_file("sorted_output.bin", sorted(data))
+            self.status.config(text="Dữ liệu lớn: Đang mở cửa sổ xem kết quả.")
+            output_path = "sorted_output.bin"
+            utils.write_binary_file(output_path, sorted(data))
+            OutputWindow(self.root, output_path) # Mở màn hình riêng
             return
 
-        # Sửa đổi: Lưu các ID của text để xóa dần
+        # Nếu <= 12 số, tiếp tục vẽ lên Canvas
         self.raw_data_texts = [] 
         for i, v in enumerate(data):
             bx, by = 70 + (i % 4) * 85, 85 + (i // 4) * 35
@@ -125,6 +154,26 @@ class ExternalSortApp:
         self.all_steps = self.engine.get_simulation_steps(path)
         self.current_step_idx = -1
         self.btn_next.config(state="normal")
+        self.btn_auto.config(state="normal") # Kích hoạt nút Auto
+
+    def toggle_auto(self):
+        """Bật/Tắt chế độ tự động chạy"""
+        if not self.is_auto:
+            self.is_auto = True
+            self.btn_auto.config(text="Dừng Auto ⏸", bg="#FFCC80")
+            self.auto_loop()
+        else:
+            self.is_auto = False
+            self.btn_auto.config(text="Chạy Auto ▶", bg="#C8E6C9")
+
+    def auto_loop(self):
+        """Vòng lặp chạy bước tiếp theo sau mỗi khoảng thời gian"""
+        if self.is_auto and self.current_step_idx < len(self.all_steps) - 1:
+            self.step_next()
+            self.root.after(800, self.auto_loop) # Chạy sau 800ms
+        elif self.current_step_idx >= len(self.all_steps) - 1:
+            self.is_auto = False
+            self.btn_auto.config(text="Chạy Auto ▶", bg="#C8E6C9", state="disabled")
 
     def apply_step(self, step):
         self.status.config(text=step['desc'])
