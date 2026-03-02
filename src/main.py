@@ -206,6 +206,7 @@ class ExternalSortApp:
                     self.canvas.delete(b[0])
                     self.canvas.delete(b[1])
             
+            self.merge_input_blocks = []
             # Tạo lại các block dựa trên dữ liệu đã tách
             # Lưu ý: create_run_ui_block đã nhận đầu vào là một list (dù có 1 hay 2 phần tử)
             b1 = self.create_run_ui_block(650, 85, step['p1']) if step['p1'] else None
@@ -215,18 +216,15 @@ class ExternalSortApp:
             self.canvas.itemconfig(b3[0], fill="#2ECC71") # Highlight trang sắp xuất
             
             self.merge_input_blocks = [b1, b2, b3]
-            
+
         elif act == 'WRITE_OUTPUT':
-            if self.merge_input_blocks:
-                # Lấy block từ Page 3 RAM (ô cuối cùng trong danh sách quản lý RAM)
-                res_block = self.merge_input_blocks.pop() 
-                
-                # Tính toán vị trí ngang trong Output Area
-                # Giả sử vùng Output bắt đầu từ x=50, mỗi block rộng 100 + khoảng cách 25 = 125
-                output_count = step.get('output_idx', 0) # Lấy index từ engine gửi qua
-                tx = 55 + (output_count % 3) * 125 
-                ty = 435 # Cố định độ cao trong khung Output
-                
+            if len(self.merge_input_blocks) >= 3:
+                # Chỉ lấy block cuối cùng (Page 3) để di chuyển
+                res_block = self.merge_input_blocks.pop(2) 
+        
+                out_idx = step.get('output_idx', 0)
+                tx = 55 + out_idx * 125 
+                ty = 435
                 self.move_block(res_block, tx, ty)
                 
                 # Đổi màu block thành màu đỏ hoặc cam để phân biệt là kết quả cuối
