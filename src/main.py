@@ -100,7 +100,7 @@ class ExternalSortApp:
         h = 35 if is_output else 45
         font_size = 8 if is_output else 10
         
-        val_str = ", ".join([str(int(v)) for v in values])
+        val_str = ", ".join([f"{float(v):.2f}" for v in values])
         
         # Vẽ block
         rect = self.canvas.create_rectangle(x, y, x + w, y + h, fill="#4A4A4A", outline="white", width=2)
@@ -166,7 +166,7 @@ class ExternalSortApp:
         self.status.pack(pady=(0, 10))
 
     def gen_custom_file(self):
-        """Lấy số lượng từ Entry và tạo file test"""
+        """Lấy số lượng từ Entry và tạo file test với số thực ngẫu nhiên"""
         try:
             count_str = self.ent_count.get()
             count = int(count_str)
@@ -175,17 +175,28 @@ class ExternalSortApp:
                 raise ValueError("Số lượng phải lớn hơn 0")
             
             if count > 10000:
-                if not messagebox.askyesno("Cảnh báo", "Số lượng quá lớn có thể làm chậm máy. Bạn có muốn tiếp tục?"):
+                if not messagebox.askyesno("Cảnh báo", "Dữ liệu lớn có thể làm chậm quá trình mô phỏng. Tiếp tục?"):
                     return
 
+            # 1. Tạo danh sách số thực ngẫu nhiên (có thể trùng)
+            # uniform(10, 500) tạo số thực, round(..., 2) lấy 2 chữ số thập phân
+            data = [round(random.uniform(10.0, 500.0), 2) for _ in range(count)]
+            
             filename = f"input_{count}.bin"
-            path = utils.create_random_input(filename, count)
             
-            self.load_and_init(path)
-            messagebox.showinfo("Thành công", f"Đã tạo và nạp {count} số từ file {filename}")
+            # 2. Ghi trực tiếp vào file binary theo định dạng float ('f')
+            # 'f' tương ứng với 4 bytes mỗi số
+            with open(filename, 'wb') as f:
+                f.write(struct.pack(f'{len(data)}f', *data))
             
-        except ValueError:
-            messagebox.showerror("Lỗi", "Vui lòng nhập một số nguyên hợp lệ!")
+            # 3. Nạp dữ liệu vào ứng dụng
+            self.load_and_init(filename)
+            messagebox.showinfo("Thành công", f"Đã tạo {count} số thực ngẫu nhiên vào file {filename}")
+            
+        except ValueError as e:
+            messagebox.showerror("Lỗi", f"Dữ liệu nhập vào không hợp lệ: {e}")
+        except Exception as e:
+            messagebox.showerror("Lỗi hệ thống", f"Không thể tạo file: {e}")
             
     def choose_file(self):
         path = filedialog.askopenfilename()
