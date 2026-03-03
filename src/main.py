@@ -156,14 +156,14 @@ class ExternalSortApp:
         self.btn_next.config(state="normal")
         self.btn_auto.config(state="normal") # Kích hoạt nút Auto
     def export_file(self):
-    """Cho phép người dùng lưu file đã sắp xếp ra vị trí khác"""
-    # Đường dẫn file kết quả mặc định mà engine tạo ra
-    # Giả sử file đó tên là 'sorted_output.bin' 
-    source_path = "sorted_output.bin" 
+        """Cho phép người dùng lưu file đã sắp xếp ra vị trí khác"""
+        # Đường dẫn file kết quả mặc định mà engine tạo ra
+        # Giả sử file đó tên là 'sorted_output.bin' 
+        source_path = "sorted_output.bin" 
 
-    if not os.path.exists(source_path):
-        messagebox.showwarning("Thông báo", "Chưa có dữ liệu đã sắp xếp để xuất!")
-        return
+        if not os.path.exists(source_path):
+            messagebox.showwarning("Thông báo", "Chưa có dữ liệu đã sắp xếp để xuất!")
+            return
 
     # Mở hộp thoại chọn nơi lưu file
     target_path = filedialog.asksaveasfilename(
