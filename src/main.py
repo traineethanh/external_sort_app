@@ -9,8 +9,20 @@ from tkinter import scrolledtext
 import os
 
 class DataListWindow(tk.Toplevel):
-    """Cửa sổ hiển thị danh sách dữ liệu (Dùng cho cả Input và Output)"""
+    """
+    Cửa sổ phụ hiển thị danh sách dữ liệu dưới dạng văn bản có thanh cuộn.
+    Sử dụng để đối chiếu dữ liệu thô (Input) và dữ liệu đã sắp xếp (Output) 
+    khi kích thước file quá lớn không thể mô phỏng trên ứng dụng.
+    """
     def __init__(self, parent, title, file_path, color="#333"):
+        """
+        Khởi tạo cửa sổ danh sách.
+        Args:
+            parent: Cửa sổ cha (root).
+            title (str): Tiêu đề của cửa sổ.
+            file_path (str): Đường dẫn đến file nhị phân cần đọc dữ liệu.
+            color (str): Màu sắc của tiêu đề để phân biệt (VD: Blue cho Input, Green cho Output).
+        """
         super().__init__(parent)
         self.title(title)
         self.geometry("350x500")
@@ -32,7 +44,14 @@ class DataListWindow(tk.Toplevel):
         self.txt_area.config(state="disabled")
 
 class ExternalSortApp:
+    """
+    Lớp điều khiển chính của ứng dụng mô phỏng External Merge Sort.
+    Quản lý giao diện (GUI), luồng hoạt động của thuật toán và tương tác người dùng.
+    """
     def __init__(self, root):
+        """
+        Thiết lập cấu hình giao diện ban đầu, khởi tạo Engine thuật toán và các biến quản lý trạng thái.
+        """
         self.root = root
         self.root.title("Mô phỏng External Merge Sort - UIT")
         self.root.geometry("1000x750")
@@ -58,7 +77,11 @@ class ExternalSortApp:
         self.draw_static_frames()
 
     def draw_static_frames(self):
-        """Vẽ cấu trúc Disk và RAM với các Buffer bên trong"""
+        """
+        Vẽ các khung cố định mô phỏng cấu trúc phần cứng bao gồm:
+        - Disk Storage: Vùng Input, Buffer F1, Buffer F2, và Vùng Output.
+        - RAM: 3 trang Buffer Page để xử lý dữ liệu.
+        """
         self.canvas.delete("all")
         
         # --- KHU VỰC DISK (Bên trái) ---
@@ -96,7 +119,16 @@ class ExternalSortApp:
             self.canvas.create_text(720, 50 + i*150, text=f"RAM Page {i+1}", fill="#28a745", font=("Arial", 9, "bold"))
 
     def create_run_ui_block(self, x, y, values, is_output=False):
-        """Tạo khối UI linh hoạt. Làm tròn 1 chữ số thập phân nếu cần."""
+        """
+        Tạo một khối hình chữ nhật đại diện cho một mảng dữ liệu (Run/Page) trên Canvas.
+        
+        Args:
+            x, y: Tọa độ điểm bắt đầu.
+            values: Danh sách giá trị số cần hiển thị bên trong khối.
+            is_output (bool): Nếu True, khối sẽ được thu nhỏ để phù hợp với vùng Output Area.
+        Returns:
+            list: ID của hình chữ nhật và ID của văn bản trên Canvas.
+        """
         if not values: return None
         
         w = 70 if is_output else 100
@@ -119,12 +151,17 @@ class ExternalSortApp:
         return [rect, text]
 
     def create_controls(self):
-        # --- FRAME CHÍNH ---
-        # Sử dụng LabelFrame để tạo các nhóm chức năng rõ ràng
+        """
+        Tạo các thành phần điều khiển giao diện bao gồm:
+        - Nhóm Cấu hình: Nhập số lượng phần tử, tạo file ngẫu nhiên, nạp file.
+        - Nhóm Thực thi: Các nút Bước tiếp theo, Chạy tự động.
+        - Nhóm Hệ thống: Reset ứng dụng, Xuất file kết quả.
+        - Thanh trạng thái: Hiển thị chi phí I/O và mô tả bước hiện tại.
+        """
         main_frame = tk.Frame(self.root, padx=10, pady=10)
         main_frame.pack(fill="x", side="bottom")
 
-        # 1. CỤM CẤU HÌNH DỮ LIỆU (Bên trái)
+        # 1. CỤM CẤU HÌNH DỮ LIỆU
         data_group = tk.LabelFrame(main_frame, text=" Cấu hình dữ liệu ", padx=10, pady=10, fg="#1976D2")
         data_group.pack(side="left", padx=5, fill="y")
 
@@ -142,7 +179,7 @@ class ExternalSortApp:
         tk.Button(data_group, text="📁 Nạp File .bin", width=15, command=self.choose_file,
                 cursor="hand2").grid(row=2, column=0, columnspan=2)
 
-        # 2. CỤM ĐIỀU KHIỂN CHẠY (Ở giữa - Quan trọng nhất)
+        # 2. CỤM ĐIỀU KHIỂN
         run_group = tk.LabelFrame(main_frame, text=" Thực thi thuật toán ", padx=15, pady=10, fg="#2E7D32")
         run_group.pack(side="left", padx=5, expand=True, fill="both")
 
@@ -156,7 +193,7 @@ class ExternalSortApp:
                                 bg="#C8E6C9", cursor="hand2")
         self.btn_auto.pack(pady=2)
 
-        # 3. CỤM TIỆN ÍCH (Bên phải)
+        # 3. CỤM TIỆN ÍCH HỆ THỐNG
         util_group = tk.LabelFrame(main_frame, text=" Hệ thống ", padx=10, pady=10, fg="#D32F2F")
         util_group.pack(side="left", padx=5, fill="y")
 
@@ -166,7 +203,7 @@ class ExternalSortApp:
         tk.Button(util_group, text="💾 Xuất Kết Quả", width=15, command=self.export_file, 
                 bg="#E1F5FE", cursor="hand2").pack(pady=5)
 
-        # --- PHẦN THÔNG TIN TRẠNG THÁI (Dưới cùng) ---
+        # --- PHẦN THÔNG TIN TRẠNG THÁI  ---
         info_frame = tk.Frame(self.root)
         info_frame.pack(fill="x", side="bottom")
 
@@ -177,6 +214,10 @@ class ExternalSortApp:
         self.status.pack(pady=(0, 10))
 
     def gen_custom_file(self):
+        """
+        Lấy số lượng từ ô nhập liệu, tạo file nhị phân ngẫu nhiên thông qua module utils 
+        và khởi tạo trạng thái mô phỏng.
+        """
         try:
             count = int(self.ent_count.get())
             if count <= 0: raise ValueError
@@ -191,6 +232,7 @@ class ExternalSortApp:
             messagebox.showerror("Lỗi", "Nhập số lượng hợp lệ!")
             
     def choose_file(self):
+        """Mở hộp thoại để người dùng chọn file nhị phân (.bin) có sẵn từ máy tính."""
         path = filedialog.askopenfilename()
         if path: self.load_and_init(path)
 
@@ -199,6 +241,14 @@ class ExternalSortApp:
         self.load_and_init(path)
 
     def load_and_init(self, path):
+        """
+        Nạp file vào ứng dụng và kiểm tra điều kiện hiển thị:
+        - Nếu số lượng phần tử > 12: Mở 2 cửa sổ phụ hiển thị Input/Output thô.
+        - Nếu số lượng phần tử <= 12: Hiển thị các số lên Canvas để bắt đầu mô phỏng từng bước.
+        
+        Args:
+            path (str): Đường dẫn file nhị phân cần nạp.
+        """
         self.reset_all()
         self.input_file_path = path
         data = utils.read_binary_file(path)
@@ -230,13 +280,15 @@ class ExternalSortApp:
             bx, by = 70 + (i % 4) * 85, 85 + (i // 4) * 35
             t_id = self.canvas.create_text(bx, by, text=str(int(v)), font=("Arial", 10, "bold"))
             self.raw_data_texts.append(t_id)
-        
+
+        # Lấy danh sách các bước mô phỏng từ Engine
         self.all_steps = self.engine.get_simulation_steps(path)
         self.current_step_idx = -1
         self.btn_next.config(state="normal")
-        self.btn_auto.config(state="normal") # Kích hoạt nút Auto
+        self.btn_auto.config(state="normal")
+
     def export_file(self):
-        """Cho phép người dùng lưu file đã sắp xếp ra vị trí khác"""
+        """Sao chép file kết quả 'sorted_output.bin' sang một vị trí và tên gọi mới do người dùng chọn."""
         # 1. Xác định file nguồn (Tên file phải khớp với file bạn tạo ra trong load_and_init)
         source_path = "sorted_output.bin" 
 
@@ -272,7 +324,7 @@ class ExternalSortApp:
             self.btn_auto.config(text="Chạy Auto ▶", bg="#C8E6C9")
 
     def auto_loop(self):
-        """Vòng lặp chạy bước tiếp theo sau mỗi khoảng thời gian"""
+        """Vòng lặp đệ quy thực hiện bước tiếp theo sau một khoảng thời gian (800ms)."""
         if self.is_auto and self.current_step_idx < len(self.all_steps) - 1:
             self.step_next()
             self.root.after(800, self.auto_loop) # Chạy sau 800ms
@@ -281,6 +333,13 @@ class ExternalSortApp:
             self.btn_auto.config(text="Chạy Auto ▶", bg="#C8E6C9", state="disabled")
 
     def apply_step(self, step):
+        """
+        Giải mã dữ liệu từ một 'step' (bước) và cập nhật đồ họa tương ứng.
+        Xử lý các hành động: LOAD_RAM, SORT_RAM, WRITE_F_BUFFER, MERGE, REPACK,...
+        
+        Args:
+            step (dict): Chứa thông tin về hành động (act), giá trị (values), và mô tả (desc).
+        """
         self.status.config(text=step['desc'])
         self.io_cost = step.get('io_cost', self.io_cost)
         self.lbl_io.config(text=f"Tổng Chi Phí I/O: {self.io_cost}")
@@ -290,16 +349,30 @@ class ExternalSortApp:
         # --- GIAI ĐOẠN 0: TẠO RUN ---
         if act == 'LOAD_RAM':
             indices = step.get('indices', [])
-            for idx in indices:
-                if self.raw_data_texts[idx]:
-                    self.canvas.delete(self.raw_data_texts[idx])
-                    self.raw_data_texts[idx] = None
-            
             vals = step['values']
+            
+            # Duyệt qua các chỉ số dữ liệu thô để xử lý hiệu ứng
             for i in range(0, len(vals), 2):
                 chunk = vals[i:i+2]
-                block = self.create_run_ui_block(650, 85 + (i//2)*150, chunk)
+                
+                # Lấy tọa độ của phần tử đầu tiên trong cặp (để làm điểm xuất phát)
+                # Dựa trên logic vẽ cũ: 70 + (idx % 4) * 85, 85 + (idx // 4) * 35
+                start_idx = indices[i]
+                start_x = 70 + (start_idx % 4) * 85
+                start_y = 85 + (start_idx // 4) * 35
+                
+                # Xóa các text thô cũ
+                for idx_to_del in indices[i:i+2]:
+                    if self.raw_data_texts[idx_to_del]:
+                        self.canvas.delete(self.raw_data_texts[idx_to_del])
+                        self.raw_data_texts[idx_to_del] = None
+                
+                # Tạo block tại vị trí thô và bắt đầu bay vào RAM
+                block = self.create_run_ui_block(start_x, start_y, chunk)
                 self.run_blocks.append(block)
+                
+                target_y = 85 + (i//2) * 150
+                self.move_block(block, 650, target_y)
 
         elif act == 'SORT_RAM':
             vals = step['values']
@@ -323,20 +396,25 @@ class ExternalSortApp:
 
         # --- GIAI ĐOẠN 2: TRỘN (MERGE) - LOGIC REPACKING ---
         elif act == 'MERGE_LOAD_RAM':
-            # Xóa triệt để các block cũ trên Disk F1/F2
-            if self.f1_blocks:
-                old = self.f1_blocks.pop(0)
-                self.canvas.delete(old[0]); self.canvas.delete(old[1])
-            if self.f2_blocks:
-                old = self.f2_blocks.pop(0)
-                self.canvas.delete(old[0]); self.canvas.delete(old[1])
-            
-            # Reset mảng quản lý RAM để đảm bảo sạch sẽ
+            # Đảm bảo RAM sạch sẽ trước khi nạp
             self.merge_input_blocks = [None, None, None]
             
-            # Tạo mới trên RAM (Page 1 & 2)
-            self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, step['r1'])
-            self.merge_input_blocks[1] = self.create_run_ui_block(650, 235, step['r2'])
+            # Nếu có block ở Disk F1, cho nó bay lên RAM Page 1
+            if self.f1_blocks:
+                block_f1 = self.f1_blocks.pop(0)
+                self.move_block(block_f1, 650, 85)
+                self.merge_input_blocks[0] = block_f1
+            else:
+                # Trường hợp đặc biệt (ví dụ Run lẻ), tạo mới nếu cần
+                self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, step['r1'])
+
+            # Nếu có block ở Disk F2, cho nó bay lên RAM Page 2
+            if self.f2_blocks:
+                block_f2 = self.f2_blocks.pop(0)
+                self.move_block(block_f2, 650, 235)
+                self.merge_input_blocks[1] = block_f2
+            else:
+                self.merge_input_blocks[1] = self.create_run_ui_block(650, 235, step['r2'])
 
         elif act == 'REPACK_RAM':
             # 1. Xóa sạch 3 ô RAM hiện tại để vẽ lại trạng thái Repack
@@ -413,7 +491,7 @@ class ExternalSortApp:
             self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, step['values'])
 
     def clear_ram_visuals(self):
-        """Hàm xóa RAM phải nằm riêng biệt để gọi ở mỗi bước dịch chuyển"""
+        """Xóa toàn bộ các khối UI hiện có trong khu vực RAM trên Canvas."""
         if hasattr(self, 'merge_input_blocks'):
             for block in self.merge_input_blocks:
                 if block:
@@ -422,12 +500,21 @@ class ExternalSortApp:
         self.merge_input_blocks = [None, None, None]
 
     def move_block(self, block_obj, tx, ty, callback=None):
-        """Hiệu ứng di chuyển mượt mà từ vị trí hiện tại đến (tx, ty)"""
+        """
+        Tạo hiệu ứng di chuyển mượt mà một khối UI từ vị trí hiện tại đến tọa độ đích.
+        
+        Args:
+            block_obj: Danh sách [rect_id, text_id] cần di chuyển.
+            tx, ty: Tọa độ đích.
+            callback: Hàm sẽ được gọi sau khi hoàn thành di chuyển.
+        """
+        if not block_obj: return
         r_id, t_id = block_obj
+        
         curr = self.canvas.coords(r_id)
         if not curr: return
         
-        steps = 15 # Số khung hình của chuyển động
+        steps = 20  # Tăng lên để mượt hơn
         dx = (tx - curr[0]) / steps
         dy = (ty - curr[1]) / steps
 
@@ -435,18 +522,19 @@ class ExternalSortApp:
             if count < steps:
                 self.canvas.move(r_id, dx, dy)
                 self.canvas.move(t_id, dx, dy)
-                self.root.after(20, lambda: anim(count + 1))
+                self.root.after(15, lambda: anim(count + 1))
             else:
                 if callback: callback()
-
         anim(0)
 
     def step_next(self):
+        """Thực hiện bước mô phỏng tiếp theo khi người dùng nhấn nút 'BƯỚC TIẾP THEO'."""
         if self.current_step_idx < len(self.all_steps) - 1:
             self.current_step_idx += 1
             self.apply_step(self.all_steps[self.current_step_idx])
 
     def reset_all(self):
+        """Làm mới toàn bộ trạng thái ứng dụng, xóa sạch dữ liệu cũ và chuẩn bị cho lượt mô phỏng mới."""
         self.draw_static_frames()
         self.io_cost = 0
         self.run_blocks = []
