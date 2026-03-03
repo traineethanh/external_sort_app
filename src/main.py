@@ -100,7 +100,7 @@ class ExternalSortApp:
         h = 35 if is_output else 45
         font_size = 8 if is_output else 10
         
-        val_str = ", ".join([f"{float(v):.2f}" for v in values])
+        val_str = ", ".join([str(int(v)) for v in values])
         
         # Vẽ block
         rect = self.canvas.create_rectangle(x, y, x + w, y + h, fill="#4A4A4A", outline="white", width=2)
