@@ -49,7 +49,7 @@ def create_random_input(file_path="input_test.bin", n=12):
         numbers = [random.randint(10, 99) for _ in range(n)]
     else:
         # Làm tròn 1 chữ số thập phân cho gọn
-        numbers = [round(random.uniform(10.0, 999.0), 1) for _ in range(n)]
+        numbers = [round(random.uniform(10.0, 99999.0), 1) for _ in range(n)]
     
     write_binary_file(file_path, numbers)
     return file_path

@@ -8,27 +8,27 @@ import shutil
 from tkinter import scrolledtext
 import os
 
-class OutputWindow(tk.Toplevel):
-    """Cửa sổ phụ hiển thị kết quả cho file dữ liệu lớn"""
-    def __init__(self, parent, file_path):
+class DataListWindow(tk.Toplevel):
+    """Cửa sổ hiển thị danh sách dữ liệu (Dùng cho cả Input và Output)"""
+    def __init__(self, parent, title, file_path, color="#333"):
         super().__init__(parent)
-        self.title("Kết quả Sắp xếp (Dữ liệu lớn)")
-        self.geometry("400x500")
+        self.title(title)
+        self.geometry("350x500")
         
-        tk.Label(self, text="Dữ liệu đã được sắp xếp hoàn tất:", font=("Arial", 11, "bold")).pack(pady=10)
+        tk.Label(self, text=title, font=("Arial", 11, "bold"), fg=color).pack(pady=10)
         
         # Khung văn bản có thanh cuộn
-        self.txt_area = scrolledtext.ScrolledText(self, width=40, height=20, font=("Courier New", 10))
-        self.txt_area.pack(padx=20, pady=10)
+        self.txt_area = scrolledtext.ScrolledText(self, width=40, height=25, font=("Courier New", 10))
+        self.txt_area.pack(padx=15, pady=10, fill="both", expand=True)
         
+        # Đọc và hiển thị dữ liệu
         data = utils.read_binary_file(file_path)
         lines = []
         for i, v in enumerate(data):
             val_fmt = str(int(v)) if v == int(v) else f"{v:.1f}"
-            lines.append(f"Vị trí {i+1:03d}:  {val_fmt}")
+            lines.append(f"[{i+1:03d}]:  {val_fmt}")
         
-        content = "\n".join(lines)
-        self.txt_area.insert(tk.END, content)
+        self.txt_area.insert(tk.END, "\n".join(lines))
         self.txt_area.config(state="disabled")
 
 class ExternalSortApp:
@@ -208,10 +208,20 @@ class ExternalSortApp:
             try:
                 self.status.config(text="Dữ liệu lớn: Đang xử lý...")
                 output_path = "sorted_output.bin"
+                # Sắp xếp và ghi file output
                 utils.write_binary_file(output_path, sorted(data))
-                OutputWindow(self.root, output_path) 
+                
+                # 1. Mở cửa sổ INPUT (Bên trái)
+                win_input = DataListWindow(self.root, "DỮ LIỆU VÀO (INPUT)", path, color="#1976D2")
+                win_input.geometry("+100+100") # Đặt vị trí cửa sổ trên màn hình
+                
+                # 2. Mở cửa sổ OUTPUT (Bên phải)
+                win_output = DataListWindow(self.root, "KẾT QUẢ (OUTPUT)", output_path, color="#2E7D32")
+                win_output.geometry("+500+100") # Đặt lệch sang phải 400px
+                
+                self.status.config(text="Đã mở 2 cửa sổ đối chiếu dữ liệu.")
             except Exception as e:
-                messagebox.showerror("Lỗi dữ liệu", f"Không thể tạo file tạm: {e}")
+                messagebox.showerror("Lỗi", f"Không thể xử lý file: {e}")
             return
 
         # Nếu <= 12 số, tiếp tục vẽ lên Canvas
