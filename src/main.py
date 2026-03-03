@@ -177,41 +177,18 @@ class ExternalSortApp:
         self.status.pack(pady=(0, 10))
 
     def gen_custom_file(self):
-        """Tạo số nguyên nếu count <= 12, tạo số thực nếu count > 12"""
         try:
-            count_str = self.ent_count.get()
-            count = int(count_str)
+            count = int(self.ent_count.get())
+            if count <= 0: raise ValueError
             
-            if count <= 0:
-                raise ValueError("Số lượng phải lớn hơn 0")
-            
-            if count > 10000:
-                if not messagebox.askyesno("Cảnh báo", "Dữ liệu lớn có thể làm chậm máy. Tiếp tục?"):
-                    return
-
+            # Gọi hàm tạo ngẫu nhiên từ utils để thống nhất logic
             filename = f"input_{count}.bin"
-
-            # --- CHUYỂN ĐỔI LOGIC TẠI ĐÂY ---
-            if count <= 12:
-                # Tạo số nguyên để mô phỏng trên Canvas cho đẹp
-                data = [random.randint(10, 99) for _ in range(count)]
-                fmt = f'{len(data)}i' # Định dạng integer
-            else:
-                # Tạo số thực cho dữ liệu lớn
-                data = [round(random.uniform(10.0, 999.0), 2) for _ in range(count)]
-                fmt = f'{len(data)}f' # Định dạng float
-
-            # Ghi file với định dạng tương ứng
-            with open(filename, 'wb') as f:
-                f.write(struct.pack(fmt, *data))
+            utils.create_random_input(filename, count)
             
-            # Nạp và khởi tạo
             self.load_and_init(filename)
-            type_str = "số nguyên" if count <= 12 else "số thực"
-            messagebox.showinfo("Thành công", f"Đã tạo {count} {type_str} vào file {filename}")
-            
+            messagebox.showinfo("Thành công", f"Đã tạo file {filename}")
         except ValueError:
-            messagebox.showerror("Lỗi", "Vui lòng nhập một số nguyên hợp lệ!")
+            messagebox.showerror("Lỗi", "Nhập số lượng hợp lệ!")
             
     def choose_file(self):
         path = filedialog.askopenfilename()
