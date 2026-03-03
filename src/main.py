@@ -22,10 +22,14 @@ class OutputWindow(tk.Toplevel):
         self.txt_area.pack(padx=20, pady=10)
         
         data = utils.read_binary_file(file_path)
-        content = "\n".join([f"Vị trí {i+1:03d}:  {int(v)}" for i, v in enumerate(data)])
+        lines = []
+        for i, v in enumerate(data):
+            val_fmt = str(int(v)) if v == int(v) else f"{v:.1f}"
+            lines.append(f"Vị trí {i+1:03d}:  {val_fmt}")
         
+        content = "\n".join(lines)
         self.txt_area.insert(tk.END, content)
-        self.txt_area.config(state="disabled") # Chỉ cho đọc
+        self.txt_area.config(state="disabled")
 
 class ExternalSortApp:
     def __init__(self, root):
@@ -92,15 +96,22 @@ class ExternalSortApp:
             self.canvas.create_text(720, 50 + i*150, text=f"RAM Page {i+1}", fill="#28a745", font=("Arial", 9, "bold"))
 
     def create_run_ui_block(self, x, y, values, is_output=False):
-        """Tạo khối UI linh hoạt. Nếu là output thì thu nhỏ kích thước."""
+        """Tạo khối UI linh hoạt. Làm tròn 1 chữ số thập phân nếu cần."""
         if not values: return None
         
-        # Cấu hình kích thước: RAM (100x45), Output (70x35)
         w = 70 if is_output else 100
         h = 35 if is_output else 45
         font_size = 8 if is_output else 10
         
-        val_str = ", ".join([str(int(v)) for v in values])
+        # LOGIC MỚI: Định dạng số gọn gàng
+        formatted_vals = []
+        for v in values:
+            if v == int(v):
+                formatted_vals.append(str(int(v))) # Hiện "15" thay vì "15.0"
+            else:
+                formatted_vals.append(f"{v:.1f}")  # Làm tròn 1 chữ số: "15.7"
+        
+        val_str = ", ".join(formatted_vals)
         
         # Vẽ block
         rect = self.canvas.create_rectangle(x, y, x + w, y + h, fill="#4A4A4A", outline="white", width=2)
@@ -306,7 +317,11 @@ class ExternalSortApp:
         elif act == 'SORT_RAM':
             vals = step['values']
             for i in range(0, len(vals), 2):
-                new_txt = ", ".join([str(int(v)) for v in vals[i:i+2]])
+                chunk = vals[i:i+2]
+                # Định dạng lại chunk tương tự logic trên
+                formatted_chunk = [str(int(v)) if v == int(v) else f"{v:.1f}" for v in chunk]
+                new_txt = ", ".join(formatted_chunk)
+                
                 self.canvas.itemconfig(self.run_blocks[i//2][0], fill="#3498DB") 
                 self.canvas.itemconfig(self.run_blocks[i//2][1], text=new_txt)
 
