@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
 import utils
+import struct
+import random
 from algorithms import ExternalSortEngine
 import shutil
 from tkinter import scrolledtext
@@ -36,6 +38,7 @@ class ExternalSortApp:
         self.input_file_path = None 
         self.is_auto = False 
         self.all_steps = []
+        self.raw_data_texts = []
         self.current_step_idx = -1
         self.run_blocks = [] 
         self.io_cost = 0
@@ -188,10 +191,13 @@ class ExternalSortApp:
         
         # XỬ LÝ DỮ LIỆU LỚN (> 12 số)
         if len(data) > 12:
-            self.status.config(text="Dữ liệu lớn: Đang mở cửa sổ xem kết quả.")
-            output_path = "sorted_output.bin"
-            utils.write_binary_file(output_path, sorted(data))
-            OutputWindow(self.root, output_path) # Mở màn hình riêng
+            try:
+                self.status.config(text="Dữ liệu lớn: Đang xử lý...")
+                output_path = "sorted_output.bin"
+                utils.write_binary_file(output_path, sorted(data))
+                OutputWindow(self.root, output_path) 
+            except Exception as e:
+                messagebox.showerror("Lỗi dữ liệu", f"Không thể tạo file tạm: {e}")
             return
 
         # Nếu <= 12 số, tiếp tục vẽ lên Canvas
