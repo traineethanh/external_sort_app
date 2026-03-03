@@ -108,69 +108,63 @@ class ExternalSortApp:
         return [rect, text]
 
     def create_controls(self):
-        # Frame chính với viền nhẹ và đổ bóng (relief)
-        main_control_frame = tk.Frame(self.root, bd=0, padx=20, pady=15)
-        main_control_frame.pack(pady=5, fill="x")
+        # --- FRAME CHÍNH ---
+        # Sử dụng LabelFrame để tạo các nhóm chức năng rõ ràng
+        main_frame = tk.Frame(self.root, padx=10, pady=10)
+        main_frame.pack(fill="x", side="bottom")
 
-        # --- CỤM 1: CẤU HÌNH DỮ LIỆU ---
-        # Chuyển sang LabelFrame để gom nhóm logic
-        input_group = tk.LabelFrame(main_control_frame, text=" CONFIG DATA ", padx=15, pady=10, 
-                                   fg="#1976D2", font=("Arial", 9, "bold"))
-        input_group.pack(side="left", padx=10, fill="y")
+        # 1. CỤM CẤU HÌNH DỮ LIỆU (Bên trái)
+        data_group = tk.LabelFrame(main_frame, text=" Cấu hình dữ liệu ", padx=10, pady=10, fg="#1976D2")
+        data_group.pack(side="left", padx=5, fill="y")
 
-        # Ô nhập số lượng (Linh hồn của phần "Tự tạo")
-        tk.Label(input_group, text="Số lượng phần tử:", font=("Arial", 9)).pack(anchor="w")
-        
-        entry_fm = tk.Frame(input_group)
-        entry_fm.pack(fill="x", pady=5)
-        
-        self.ent_count = tk.Entry(entry_fm, width=10, justify='center', font=("Consolas", 11), 
-                                 bd=2, relief="groove")
+        # Ô nhập số lượng
+        tk.Label(data_group, text="Số lượng:").grid(row=0, column=0, sticky="w")
+        self.ent_count = tk.Entry(data_group, width=8, justify='center')
         self.ent_count.insert(0, "12")
-        self.ent_count.pack(side="left", ipady=2)
-        
-        # Nút tạo Random - Thay thế hoàn toàn cho nút "Tạo 12 số"
-        tk.Button(entry_fm, text="🎲 TẠO RANDOM", command=self.gen_custom_file, 
-                  bg="#E3F2FD", fg="#1565C0", font=("Arial", 8, "bold"),
-                  activebackground="#BBDEFB", cursor="hand2").pack(side="left", padx=5)
+        self.ent_count.grid(row=0, column=1, padx=5)
 
-        # Ngăn cách nhẹ
-        tk.Frame(input_group, height=1, bg="#E0E0E0").pack(fill="x", pady=10)
+        # Nút Tạo Random (Thay thế cho nút tạo 12 số cũ)
+        tk.Button(data_group, text="🎲 Tạo Random", width=15, command=self.gen_custom_file, 
+                bg="#E3F2FD", cursor="hand2").grid(row=1, column=0, columnspan=2, pady=5)
 
-        # Nút nạp file thủ công
-        tk.Button(input_group, text="📁 Chọn file .bin có sẵn", width=22, command=self.choose_file,
-                  bg="#F5F5F5", bd=1, relief="ridge", cursor="hand2").pack()
+        # Nút Nạp File
+        tk.Button(data_group, text="📁 Nạp File .bin", width=15, command=self.choose_file,
+                cursor="hand2").grid(row=2, column=0, columnspan=2)
 
-        # --- CỤM 2: ĐIỀU KHIỂN THUẬT TOÁN (TRUNG TÂM) ---
-        run_group = tk.LabelFrame(main_control_frame, text=" EXECUTION ", padx=20, pady=10, 
-                                 fg="#2E7D32", font=("Arial", 9, "bold"))
-        run_group.pack(side="left", padx=10, expand=True, fill="both")
+        # 2. CỤM ĐIỀU KHIỂN CHẠY (Ở giữa - Quan trọng nhất)
+        run_group = tk.LabelFrame(main_frame, text=" Thực thi thuật toán ", padx=15, pady=10, fg="#2E7D32")
+        run_group.pack(side="left", padx=5, expand=True, fill="both")
 
-        # Nút Next - To và nổi bật nhất
-        self.btn_next = tk.Button(run_group, text="BƯỚC TIẾP THEO ❯❯", width=30, height=2, 
+        self.btn_next = tk.Button(run_group, text="BƯỚC TIẾP THEO >>", width=30, height=2, 
                                 command=self.step_next, state="disabled", 
-                                bg="#2196F3", fg="white", font=("Arial", 10, "bold"),
-                                bd=0, cursor="hand2", activebackground="#1976D2")
-        self.btn_next.pack(expand=True, pady=2)
+                                bg="#BBDEFB", font=("Arial", 10, "bold"), cursor="hand2")
+        self.btn_next.pack(pady=2)
 
-        # Nút Auto
-        self.btn_auto = tk.Button(run_group, text="CHẠY TỰ ĐỘNG ▶", width=30,
+        self.btn_auto = tk.Button(run_group, text="CHẠY TỰ ĐỘNG ▶", width=30, 
                                 command=self.toggle_auto, state="disabled", 
-                                bg="#81C784", fg="white", font=("Arial", 9, "bold"),
-                                bd=0, cursor="hand2")
-        self.btn_auto.pack(pady=5)
+                                bg="#C8E6C9", cursor="hand2")
+        self.btn_auto.pack(pady=2)
 
-        # --- CỤM 3: TIỆN ÍCH ---
-        sys_group = tk.LabelFrame(main_control_frame, text=" UTILS ", padx=15, pady=10, 
-                                 fg="#C62828", font=("Arial", 9, "bold"))
-        sys_group.pack(side="left", padx=10, fill="y")
+        # 3. CỤM TIỆN ÍCH (Bên phải)
+        util_group = tk.LabelFrame(main_frame, text=" Hệ thống ", padx=10, pady=10, fg="#D32F2F")
+        util_group.pack(side="left", padx=5, fill="y")
 
-        tk.Button(sys_group, text="🔄 Reset hệ thống", width=18, command=self.reset_all, 
-                  bg="#FFEBEE", fg="#C62828", bd=0, cursor="hand2").pack(pady=5)
+        tk.Button(util_group, text="🔄 Reset Máy", width=15, command=self.reset_all, 
+                bg="#FFCDD2", cursor="hand2").pack(pady=5)
         
-        tk.Button(sys_group, text="💾 Lưu kết quả", width=18, command=self.export_file, 
-                  bg="#E1F5FE", fg="#0277BD", bd=0, cursor="hand2").pack(pady=5)
-                  
+        tk.Button(util_group, text="💾 Xuất Kết Quả", width=15, command=self.export_file, 
+                bg="#E1F5FE", cursor="hand2").pack(pady=5)
+
+        # --- PHẦN THÔNG TIN TRẠNG THÁI (Dưới cùng) ---
+        info_frame = tk.Frame(self.root)
+        info_frame.pack(fill="x", side="bottom")
+
+        self.lbl_io = tk.Label(info_frame, text="Tổng Chi Phí I/O: 0", font=("Arial", 13, "bold"), fg="#D32F2F")
+        self.lbl_io.pack()
+
+        self.status = tk.Label(info_frame, text="Trạng thái: Sẵn sàng", font=("Arial", 10, "italic"), fg="#666")
+        self.status.pack(pady=(0, 10))
+
     def gen_custom_file(self):
         """Lấy số lượng từ Entry và tạo file test"""
         try:
