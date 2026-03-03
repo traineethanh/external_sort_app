@@ -4,6 +4,7 @@ import utils
 from algorithms import ExternalSortEngine
 import shutil
 from tkinter import scrolledtext
+import os
 
 class OutputWindow(tk.Toplevel):
     """Cửa sổ phụ hiển thị kết quả cho file dữ liệu lớn"""
@@ -112,7 +113,8 @@ class ExternalSortApp:
         tk.Button(control_frame, text="Reset", width=15, command=self.reset_all, bg="#FFCDD2").grid(row=0, column=3, padx=5)
         tk.Button(control_frame, text="Tạo 50 số", width=15, 
                   command=lambda: self.load_and_init(utils.create_random_input("input_50.bin", 50))).grid(row=0, column=2, padx=5)
-        tk.Button(control_frame, text="Xuất File 💾", width=15, command=self.export_file, bg="#E1F5FE").grid(row=0, column=4, padx=5)
+        tk.Button(control_frame, text="Xuất File 💾", width=15, 
+          command=self.export_file, bg="#E1F5FE", fg="black").grid(row=1, column=4, padx=5, pady=10)
         self.btn_next = tk.Button(control_frame, text="Bước tiếp theo >>", width=25, command=self.step_next, state="disabled", bg="#BBDEFB")
         self.btn_next.grid(row=1, column=0, columnspan=4, pady=(10, 5))
         self.btn_auto = tk.Button(self.root, text="Chạy Auto ▶", width=25, command=self.toggle_auto, state="disabled", bg="#C8E6C9")
@@ -157,27 +159,29 @@ class ExternalSortApp:
         self.btn_auto.config(state="normal") # Kích hoạt nút Auto
     def export_file(self):
         """Cho phép người dùng lưu file đã sắp xếp ra vị trí khác"""
-        # Đường dẫn file kết quả mặc định mà engine tạo ra
-        # Giả sử file đó tên là 'sorted_output.bin' 
+        # 1. Xác định file nguồn (Tên file phải khớp với file bạn tạo ra trong load_and_init)
         source_path = "sorted_output.bin" 
 
+        # KIỂM TRA FILE CÓ TỒN TẠI KHÔNG
         if not os.path.exists(source_path):
-            messagebox.showwarning("Thông báo", "Chưa có dữ liệu đã sắp xếp để xuất!")
+            messagebox.showwarning("Thông báo", 
+                f"Không tìm thấy file '{source_path}'.\n\nBạn cần chạy sắp xếp dữ liệu lớn hoặc đợi thuật toán hoàn tất trước khi xuất.")
             return
 
-        # Mở hộp thoại chọn nơi lưu file
+        # 2. Mở hộp thoại lưu file
         target_path = filedialog.asksaveasfilename(
             defaultextension=".bin",
-            filetypes=[("Binary files", "*.bin"), ("All files", "*.*")],
+            filetypes=[("Binary files", "*.bin"), ("Text files", "*.txt"), ("All files", "*.*")],
             title="Chọn nơi lưu file kết quả"
         )
 
+        # 3. Thực hiện copy nếu người dùng không nhấn Cancel
         if target_path:
             try:
                 shutil.copy(source_path, target_path)
-                messagebox.showinfo("Thành công", f"Đã xuất file tại:\n{target_path}")
+                messagebox.showinfo("Thành công", f"Đã xuất file thành công!")
             except Exception as e:
-                messagebox.showerror("Lỗi", f"Không thể xuất file: {e}")
+                messagebox.showerror("Lỗi hệ thống", f"Lỗi khi lưu file: {e}")
 
     def toggle_auto(self):
         """Bật/Tắt chế độ tự động chạy"""
