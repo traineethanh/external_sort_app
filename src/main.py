@@ -396,24 +396,26 @@ class ExternalSortApp:
 
         # --- GIAI ĐOẠN 2: TRỘN (MERGE) - LOGIC REPACKING ---
         elif act == 'MERGE_LOAD_RAM':
-            # Đảm bảo RAM sạch sẽ trước khi nạp
+            """Mô phỏng nạp dữ liệu từ Disk Buffer vào RAM để chuẩn bị trộn"""
+            # Reset mảng quản lý RAM
             self.merge_input_blocks = [None, None, None]
             
-            # Nếu có block ở Disk F1, cho nó bay lên RAM Page 1
+            # Xử lý Run từ Disk Buffer F1 lên RAM Page 1
             if self.f1_blocks:
                 block_f1 = self.f1_blocks.pop(0)
+                # Tọa độ RAM Page 1 là (650, 85)
                 self.move_block(block_f1, 650, 85)
                 self.merge_input_blocks[0] = block_f1
-            else:
-                # Trường hợp đặc biệt (ví dụ Run lẻ), tạo mới nếu cần
+            elif step.get('r1'): # Phòng hờ nếu Disk trống nhưng logic vẫn yêu cầu dữ liệu
                 self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, step['r1'])
 
-            # Nếu có block ở Disk F2, cho nó bay lên RAM Page 2
+            # Xử lý Run từ Disk Buffer F2 lên RAM Page 2
             if self.f2_blocks:
                 block_f2 = self.f2_blocks.pop(0)
+                # Tọa độ RAM Page 2 là (650, 235)
                 self.move_block(block_f2, 650, 235)
                 self.merge_input_blocks[1] = block_f2
-            else:
+            elif step.get('r2'):
                 self.merge_input_blocks[1] = self.create_run_ui_block(650, 235, step['r2'])
 
         elif act == 'REPACK_RAM':
@@ -432,7 +434,8 @@ class ExternalSortApp:
             self.merge_input_blocks = [b1, b2, b3]
 
         elif act == 'REPACK_SHIFT_DOWN':
-            # FIX: Xóa run ở Disk khi bắt đầu Pass 1
+            """Mô phỏng việc dồn (shift) dữ liệu dư thừa giữa các trang RAM"""
+            # 1. Xóa các run đã dùng hết ở Disk (nếu có yêu cầu từ logic)
             sources = step.get('clear_sources', [])
             for src in sources:
                 if src == "F1" and self.f1_blocks:
@@ -442,12 +445,30 @@ class ExternalSortApp:
                     b = self.f2_blocks.pop(0)
                     self.canvas.delete(b[0]); self.canvas.delete(b[1])
 
-            self.clear_ram_visuals() # Xóa RAM cũ
+            # 2. Thực hiện hiệu ứng dịch chuyển
+            # Lưu lại tham chiếu cũ để di chuyển trước khi tạo mảng quản lý mới
+            old_blocks = self.merge_input_blocks[:]
+            self.merge_input_blocks = [None, None, None]
+            
             y_coords = [85, 235, 385]
             p_data = [step.get('p1'), step.get('p2'), step.get('p3')]
+
             for i in range(3):
                 if p_data[i]:
-                    self.merge_input_blocks[i] = self.create_run_ui_block(650, y_coords[i], p_data[i])
+                    # Nếu trang này đã có block cũ, ta 'tái sử dụng' và di chuyển nó
+                    # Nếu là dữ liệu mới hoàn toàn, ta mới tạo khối mới
+                    found_old = False
+                    for j, old_b in enumerate(old_blocks):
+                        if old_b and i == j: # Nếu block vẫn ở vị trí cũ (không đổi page)
+                             self.merge_input_blocks[i] = old_b
+                             found_old = True
+                             break
+                    
+                    if not found_old:
+                        # Tạo mới tại vị trí Page 1 (giả định nạp từ trên xuống) rồi di chuyển xuống Page i
+                        new_b = self.create_run_ui_block(650, 85, p_data[i])
+                        self.move_block(new_b, 650, y_coords[i])
+                        self.merge_input_blocks[i] = new_b
 
         elif act == 'WRITE_OUTPUT':
             if self.merge_input_blocks[2]:
@@ -511,10 +532,14 @@ class ExternalSortApp:
         if not block_obj: return
         r_id, t_id = block_obj
         
+        # Đảm bảo khối đang bay nằm trên các khung hình tĩnh
+        self.canvas.tag_raise(r_id)
+        self.canvas.tag_raise(t_id)
+        
         curr = self.canvas.coords(r_id)
         if not curr: return
         
-        steps = 20  # Tăng lên để mượt hơn
+        steps = 20 
         dx = (tx - curr[0]) / steps
         dy = (ty - curr[1]) / steps
 
