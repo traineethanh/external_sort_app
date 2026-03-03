@@ -166,7 +166,7 @@ class ExternalSortApp:
         self.status.pack(pady=(0, 10))
 
     def gen_custom_file(self):
-        """Lấy số lượng từ Entry và tạo file test với số thực ngẫu nhiên"""
+        """Tạo số nguyên nếu count <= 12, tạo số thực nếu count > 12"""
         try:
             count_str = self.ent_count.get()
             count = int(count_str)
@@ -175,28 +175,32 @@ class ExternalSortApp:
                 raise ValueError("Số lượng phải lớn hơn 0")
             
             if count > 10000:
-                if not messagebox.askyesno("Cảnh báo", "Dữ liệu lớn có thể làm chậm quá trình mô phỏng. Tiếp tục?"):
+                if not messagebox.askyesno("Cảnh báo", "Dữ liệu lớn có thể làm chậm máy. Tiếp tục?"):
                     return
 
-            # 1. Tạo danh sách số thực ngẫu nhiên (có thể trùng)
-            # uniform(10, 500) tạo số thực, round(..., 2) lấy 2 chữ số thập phân
-            data = [round(random.uniform(10.0, 500.0), 2) for _ in range(count)]
-            
             filename = f"input_{count}.bin"
-            
-            # 2. Ghi trực tiếp vào file binary theo định dạng float ('f')
-            # 'f' tương ứng với 4 bytes mỗi số
+
+            # --- CHUYỂN ĐỔI LOGIC TẠI ĐÂY ---
+            if count <= 12:
+                # Tạo số nguyên để mô phỏng trên Canvas cho đẹp
+                data = [random.randint(10, 99) for _ in range(count)]
+                fmt = f'{len(data)}i' # Định dạng integer
+            else:
+                # Tạo số thực cho dữ liệu lớn
+                data = [round(random.uniform(10.0, 999.0), 2) for _ in range(count)]
+                fmt = f'{len(data)}f' # Định dạng float
+
+            # Ghi file với định dạng tương ứng
             with open(filename, 'wb') as f:
-                f.write(struct.pack(f'{len(data)}f', *data))
+                f.write(struct.pack(fmt, *data))
             
-            # 3. Nạp dữ liệu vào ứng dụng
+            # Nạp và khởi tạo
             self.load_and_init(filename)
-            messagebox.showinfo("Thành công", f"Đã tạo {count} số thực ngẫu nhiên vào file {filename}")
+            type_str = "số nguyên" if count <= 12 else "số thực"
+            messagebox.showinfo("Thành công", f"Đã tạo {count} {type_str} vào file {filename}")
             
-        except ValueError as e:
-            messagebox.showerror("Lỗi", f"Dữ liệu nhập vào không hợp lệ: {e}")
-        except Exception as e:
-            messagebox.showerror("Lỗi hệ thống", f"Không thể tạo file: {e}")
+        except ValueError:
+            messagebox.showerror("Lỗi", "Vui lòng nhập một số nguyên hợp lệ!")
             
     def choose_file(self):
         path = filedialog.askopenfilename()
