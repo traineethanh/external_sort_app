@@ -112,7 +112,7 @@ class ExternalSortApp:
         tk.Button(control_frame, text="Reset", width=15, command=self.reset_all, bg="#FFCDD2").grid(row=0, column=3, padx=5)
         tk.Button(control_frame, text="Tạo 50 số", width=15, 
                   command=lambda: self.load_and_init(utils.create_random_input("input_50.bin", 50))).grid(row=0, column=2, padx=5)
-        tk.Button(control_frame, text="Xuất File 💾", width=15, command=self.export_file, bg="#E1F5FE").grid(row=0, column=4, padx=5)
+
         self.btn_next = tk.Button(control_frame, text="Bước tiếp theo >>", width=25, command=self.step_next, state="disabled", bg="#BBDEFB")
         self.btn_next.grid(row=1, column=0, columnspan=4, pady=(10, 5))
         self.btn_auto = tk.Button(self.root, text="Chạy Auto ▶", width=25, command=self.toggle_auto, state="disabled", bg="#C8E6C9")
@@ -165,20 +165,20 @@ class ExternalSortApp:
             messagebox.showwarning("Thông báo", "Chưa có dữ liệu đã sắp xếp để xuất!")
             return
 
-    # Mở hộp thoại chọn nơi lưu file
-    target_path = filedialog.asksaveasfilename(
-        defaultextension=".bin",
-        filetypes=[("Binary files", "*.bin"), ("All files", "*.*")],
-        title="Chọn nơi lưu file kết quả"
-    )
+        # Mở hộp thoại chọn nơi lưu file
+        target_path = filedialog.asksaveasfilename(
+            defaultextension=".bin",
+            filetypes=[("Binary files", "*.bin"), ("All files", "*.*")],
+            title="Chọn nơi lưu file kết quả"
+        )
 
-    if target_path:
-        try:
-            shutil.copy(source_path, target_path)
-            messagebox.showinfo("Thành công", f"Đã xuất file tại:\n{target_path}")
-        except Exception as e:
-            messagebox.showerror("Lỗi", f"Không thể xuất file: {e}")
-    
+        if target_path:
+            try:
+                shutil.copy(source_path, target_path)
+                messagebox.showinfo("Thành công", f"Đã xuất file tại:\n{target_path}")
+            except Exception as e:
+                messagebox.showerror("Lỗi", f"Không thể xuất file: {e}")
+                
     def toggle_auto(self):
         """Bật/Tắt chế độ tự động chạy"""
         if not self.is_auto:
