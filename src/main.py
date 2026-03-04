@@ -56,6 +56,9 @@ class ExternalSortApp:
         self.root = root
         self.root.title("Mô phỏng External Merge Sort - UIT")
         self.root.geometry("1000x750")
+
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
         
         # Engine xử lý logic thuật toán tách biệt với giao diện
         self.engine = ExternalSortEngine(buffer_pages=3)
@@ -72,7 +75,7 @@ class ExternalSortApp:
 
         # Canvas: Khu vực chính để vẽ các thành phần phần cứng (Disk/RAM)
         self.canvas = tk.Canvas(root, bg="white", highlightthickness=1)
-        self.canvas.pack(pady=10, padx=10, fill="both", expand=True)
+        self.canvas.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         
         self.create_controls()      # Tạo các nút bấm và ô nhập liệu
         self.draw_static_frames()   # Vẽ sơ đồ cứng Disk và RAM
