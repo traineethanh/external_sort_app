@@ -55,7 +55,7 @@ class ExternalSortApp:
         """
         self.root = root
         self.root.title("Mô phỏng External Merge Sort - UIT")
-        self.root.geometry("1000x650")
+        self.root.geometry("1000x700")
 
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
