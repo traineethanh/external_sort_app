@@ -22,7 +22,7 @@ class ExternalSortEngine:
             steps.append({'act': 'LOAD_RAM', 'values': chunk, 'indices': list(range(i, min(i+6, N))), 'desc': "Pass 0: Nạp 6 số vào RAM."})
             sorted_chunk = sorted(chunk)
             steps.append({'act': 'SORT_RAM', 'values': sorted_chunk, 'desc': "Sắp xếp nội bộ 6 số."})
-            io_cost += math.ceil(len(chunk) / 2)
+            io_cost += 1
             
             for j in range(0, len(sorted_chunk), 2):
                 run = sorted_chunk[j : j + 2]
