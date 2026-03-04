@@ -148,47 +148,50 @@ class ExternalSortApp:
         - Nhóm Hệ thống: Reset ứng dụng, Xuất file kết quả.
         - Thanh trạng thái: Hiển thị chi phí I/O và mô tả bước hiện tại.
         """
-        main_frame = tk.Frame(self.root, padx=10, pady=10)
-        main_frame.pack(fill="x", side="bottom")
+        main_frame = tk.Frame(self.root, padx=10, pady=5)
+        main_frame.pack(fill="both", side="bottom", expand=False)
 
         # 1. NHÓM CẤU HÌNH DỮ LIỆU
         data_group = tk.LabelFrame(main_frame, text=" Cấu hình dữ liệu ", padx=10, pady=10, fg="#1976D2")
-        data_group.pack(side="left", padx=5, fill="y")
+        data_group.grid(row=0, column=0, padx=5, sticky="nsew")
+
+        data_group.columnconfigure(0, weight=1)
+        data_group.columnconfigure(1, weight=1)
 
         tk.Label(data_group, text="Số lượng:").grid(row=0, column=0, sticky="w")
         self.ent_count = tk.Entry(data_group, width=8, justify='center')
         self.ent_count.insert(0, "12")
-        self.ent_count.grid(row=0, column=1, padx=5)
+        self.ent_count.grid(row=0, column=1, padx=5, sticky="ew")
 
-        tk.Button(data_group, text="🎲 Tạo Random", width=15, command=self.gen_custom_file, 
-                bg="#E3F2FD", cursor="hand2").grid(row=1, column=0, columnspan=2, pady=5)
+        tk.Button(data_group, text="🎲 Tạo Random", command=self.gen_custom_file, 
+                bg="#E3F2FD", cursor="hand2").grid(row=1, column=0, columnspan=2, pady=5, sticky="ew")
 
-        tk.Button(data_group, text="📁 Nạp File .bin", width=15, command=self.choose_file,
-                cursor="hand2").grid(row=2, column=0, columnspan=2)
+        tk.Button(data_group, text="📁 Nạp File .bin", command=self.choose_file,
+                cursor="hand2").grid(row=2, column=0, columnspan=2, sticky="ew")
 
         # 2. NHÓM ĐIỀU KHIỂN THUẬT TOÁN
         run_group = tk.LabelFrame(main_frame, text=" Thực thi thuật toán ", padx=15, pady=10, fg="#2E7D32")
-        run_group.pack(side="left", padx=5, expand=True, fill="both")
+        run_group.grid(row=0, column=1, padx=5, sticky="nsew")
 
-        self.btn_next = tk.Button(run_group, text="BƯỚC TIẾP THEO >>", width=30, height=2, 
+        self.btn_next = tk.Button(run_group, text="BƯỚC TIẾP THEO >>", height=2, 
                                 command=self.step_next, state="disabled", 
                                 bg="#BBDEFB", font=("Arial", 10, "bold"), cursor="hand2")
-        self.btn_next.pack(pady=2)
+        self.btn_next.pack(pady=2, fill="x", expand=True)
 
-        self.btn_auto = tk.Button(run_group, text="CHẠY TỰ ĐỘNG ▶", width=30, 
+        self.btn_auto = tk.Button(run_group, text="CHẠY TỰ ĐỘNG ▶", 
                                 command=self.toggle_auto, state="disabled", 
                                 bg="#C8E6C9", cursor="hand2")
-        self.btn_auto.pack(pady=2)
+        self.btn_auto.pack(pady=2, fill="x", expand=True)
 
         # 3. NHÓM TIỆN ÍCH HỆ THỐNG
         util_group = tk.LabelFrame(main_frame, text=" Hệ thống ", padx=10, pady=10, fg="#D32F2F")
-        util_group.pack(side="left", padx=5, fill="y")
+        util_group.grid(row=0, column=2, padx=5, sticky="nsew")
 
-        tk.Button(util_group, text="🔄 Reset Máy", width=15, command=self.reset_all, 
-                bg="#FFCDD2", cursor="hand2").pack(pady=5)
+        tk.Button(util_group, text="🔄 Reset Máy", command=self.reset_all, 
+                bg="#FFCDD2", cursor="hand2").pack(pady=5, fill="x", expand=True)
         
-        tk.Button(util_group, text="💾 Xuất Kết Quả", width=15, command=self.export_file, 
-                bg="#E1F5FE", cursor="hand2").pack(pady=5)
+        tk.Button(util_group, text="💾 Xuất Kết Quả", command=self.export_file, 
+                bg="#E1F5FE", cursor="hand2").pack(pady=5, fill="x", expand=True)
 
         # --- HIỂN THỊ TRẠNG THÁI ---
         info_frame = tk.Frame(self.root)
