@@ -2,11 +2,28 @@ import utils
 import math
 
 class ExternalSortEngine:
+    """
+    Lớp xử lý logic thuật toán External Merge Sort.
+    Tính toán các bước mô phỏng và chi phí I/O dựa trên dữ liệu nhị phân.
+    """
     def __init__(self, buffer_pages=3):
+        """Khởi tạo Engine với số lượng trang RAM đệm mặc định mô phỏng là 3."""
         self.B_total = buffer_pages 
         self.page_size = 2 
 
     def get_simulation_steps(self, input_file):
+        """
+        Phân tích file đầu vào và tạo danh sách các bước (steps) mô phỏng đồ họa.
+        
+        Quy trình bao gồm:
+        - Pass 0: Đọc cụm 6 số, sắp xếp nội bộ và ghi các Run (2 số) xuống Disk (F1/F2).
+        - Pass 1: Trộn các Run từ Disk, thực hiện Repacking trong RAM và xuất kết quả.
+        
+        Args:
+            input_file (str): Đường dẫn file nhị phân đầu vào.
+        Returns:
+            list: Danh sách các dictionary chứa thông tin hành động và dữ liệu từng bước.
+        """
         data = utils.read_binary_file(input_file)
         steps = []
         io_cost = 0
