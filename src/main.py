@@ -78,7 +78,9 @@ class ExternalSortApp:
         self.canvas.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         
         self.create_controls()      # Tạo các nút bấm và ô nhập liệu
+        self.root.update_idletasks()
         self.draw_static_frames()   # Vẽ sơ đồ cứng Disk và RAM
+        self.canvas.bind("<Configure>", lambda event: self.draw_static_frames())
 
     def draw_static_frames(self):
         """
@@ -88,35 +90,49 @@ class ExternalSortApp:
         """
         self.canvas.delete("all")
         
+        # Cập nhật để lấy kích thước thật của Canvas
+        self.root.update_idletasks()
+        canvas_width = self.canvas.winfo_width()
+        
+        # Tổng chiều rộng sơ đồ ước tính (từ X=30 đến X=920 là khoảng 890px)
+        total_content_width = 890
+        
+        # Tính toán độ dời để căn giữa
+        self.offset_x = (canvas_width - total_content_width) // 2
+        if self.offset_x < 10: self.offset_x = 10 # Đảm bảo không bị lấn lề trái
+
         # --- KHU VỰC DISK (Bên trái) ---
-        self.canvas.create_rectangle(30, 30, 450, 520, outline="#0056b3", width=2)
-        self.canvas.create_text(240, 15, text="DISK STORAGE", font=("Arial", 12, "bold"), fill="#0056b3")
+        # Gốc tọa độ X mới = tọa độ cũ + self.offset_x
+        self.canvas.create_rectangle(self.offset_x + 30, 30, self.offset_x + 450, 520, outline="#0056b3", width=2)
+        self.canvas.create_text(self.offset_x + 240, 15, text="DISK STORAGE", font=("Arial", 12, "bold"), fill="#0056b3")
 
         # 1. Vùng Input Data
-        self.canvas.create_text(110, 50, text="[ Input Data Area ]", font=("Arial", 10, "italic"))
-        self.canvas.create_rectangle(50, 65, 430, 180, outline="#777", dash=(5,2))
+        self.canvas.create_text(self.offset_x + 110, 50, text="[ Input Data Area ]", font=("Arial", 10, "italic"))
+        self.canvas.create_rectangle(self.offset_x + 50, 65, self.offset_x + 430, 180, outline="#777", dash=(5,2))
 
-        # 2. Disk Buffer F1 (Vùng chứa Run sau Pass 0)
-        self.canvas.create_text(110, 200, text="[ Disk Buffer F1 ]", font=("Arial", 10, "bold"), fill="#0056b3")
+        # 2. Disk Buffer F1
+        self.canvas.create_text(self.offset_x + 110, 200, text="[ Disk Buffer F1 ]", font=("Arial", 10, "bold"), fill="#0056b3")
         for i in range(3):
-            self.canvas.create_rectangle(50 + i*125, 215, 165 + i*125, 275, outline="#0056b3", dash=(2,2))
+            self.canvas.create_rectangle(self.offset_x + 50 + i*125, 215, self.offset_x + 165 + i*125, 275, outline="#0056b3", dash=(2,2))
 
-        # 3. Disk Buffer F2 (Vùng chứa Run sau các Pass trộn)
-        self.canvas.create_text(110, 300, text="[ Disk Buffer F2 ]", font=("Arial", 10, "bold"), fill="#0056b3")
+        # 3. Disk Buffer F2
+        self.canvas.create_text(self.offset_x + 110, 300, text="[ Disk Buffer F2 ]", font=("Arial", 10, "bold"), fill="#0056b3")
         for i in range(3):
-            self.canvas.create_rectangle(50 + i*125, 315, 165 + i*125, 375, outline="#0056b3", dash=(2,2))
+            self.canvas.create_rectangle(self.offset_x + 50 + i*125, 315, self.offset_x + 165 + i*125, 375, outline="#0056b3", dash=(2,2))
 
-        # 4. Output Area (Kết quả cuối cùng)
-        self.canvas.create_text(110, 400, text="[ Output Sorted Area ]", font=("Arial", 10, "bold"), fill="#d32f2f")
-        self.canvas.create_rectangle(50, 415, 430, 500, outline="#d32f2f", width=2)
+        # 4. Output Area
+        self.canvas.create_text(self.offset_x + 110, 400, text="[ Output Sorted Area ]", font=("Arial", 10, "bold"), fill="#d32f2f")
+        self.canvas.create_rectangle(self.offset_x + 50, 415, self.offset_x + 430, 500, outline="#d32f2f", width=2)
 
         # --- KHU VỰC RAM (Bên phải) ---
-        self.canvas.create_rectangle(520, 30, 920, 520, outline="#28a745", width=2)
-        self.canvas.create_text(720, 15, text="RAM (3 BUFFER PAGES)", font=("Arial", 12, "bold"), fill="#28a745")
+        ram_x = self.offset_x + 520
+        self.canvas.create_rectangle(ram_x, 30, ram_x + 400, 520, outline="#28a745", width=2)
+        self.canvas.create_text(ram_x + 200, 15, text="RAM (3 BUFFER PAGES)", font=("Arial", 12, "bold"), fill="#28a745")
 
         for i in range(3):
-            self.canvas.create_rectangle(550, 60 + i*150, 890, 180 + i*150, outline="#28a745", width=2)
-            self.canvas.create_text(720, 50 + i*150, text=f"RAM Page {i+1}", fill="#28a745", font=("Arial", 9, "bold"))
+            # Căn giữa các Page bên trong khung RAM
+            self.canvas.create_rectangle(ram_x + 30, 60 + i*150, ram_x + 370, 180 + i*150, outline="#28a745", width=2)
+            self.canvas.create_text(ram_x + 200, 50 + i*150, text=f"RAM Page {i+1}", fill="#28a745", font=("Arial", 9, "bold"))
 
     def create_run_ui_block(self, x, y, values, is_output=False):
         """
