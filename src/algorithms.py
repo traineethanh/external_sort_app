@@ -96,9 +96,11 @@ class ExternalSortEngine:
                         new_run, source = all_runs_f1.pop(0), "F1" # Gán source
                     else:
                         new_run, source = all_runs_f2.pop(0), "F2" # Gán source
+                    io_cost += 1
                 else:
                     source = "F1" if all_runs_f1 else "F2"
                     new_run = all_runs_f1.pop(0) if all_runs_f1 else all_runs_f2.pop(0)
+                    io_cost += 1
                 
                 ram_pages[0] = new_run
                 steps.append({
