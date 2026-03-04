@@ -71,7 +71,7 @@ class ExternalSortApp:
         self.io_cost = 0             # Tổng chi phí I/O tích lũy
         self.f1_blocks = []          # Khối dữ liệu tại vùng Disk Buffer F1
         self.f2_blocks = []          # Khối dữ liệu tại vùng Disk Buffer F2
-        self.merge_input_blocks = [] # Khối dữ liệu đang nằm trong RAM (3 trang)
+        self.merge_input_blocks = [None, None, None] # Khối dữ liệu đang nằm trong RAM (3 trang)
 
         # Canvas: Khu vực chính để vẽ các thành phần phần cứng (Disk/RAM)
         self.canvas = tk.Canvas(root, bg="white", highlightthickness=1)
@@ -280,7 +280,9 @@ class ExternalSortApp:
         # VẼ DỮ LIỆU LÊN CANVAS CHO FILE NHỎ
         self.raw_data_texts = [] 
         for i, v in enumerate(data):
-            bx, by = 70 + (i % 4) * 85, 85 + (i // 4) * 35
+            # Cần cộng thêm self.offset_x vào tọa độ bx
+            bx = self.offset_x + 70 + (i % 4) * 85
+            by = 85 + (i // 4) * 35
             t_id = self.canvas.create_text(bx, by, text=str(int(v)), font=("Arial", 10, "bold"))
             self.raw_data_texts.append(t_id)
         
@@ -342,122 +344,113 @@ class ExternalSortApp:
         self.lbl_io.config(text=f"Tổng Chi Phí I/O: {self.io_cost}")
         
         act = step['act']
+        off = self.offset_x # Biến offset để căn giữa
 
-        # Xử lý các bước mô phỏng đồ họa cụ thể (Logic di chuyển/vẽ các khối UI)
+        # --- PASS 0: CHIA RUN ---
         if act == 'LOAD_RAM':
             indices = step.get('indices', [])
             for idx in indices:
-                if self.raw_data_texts[idx]:
+                if idx < len(self.raw_data_texts) and self.raw_data_texts[idx]:
                     self.canvas.delete(self.raw_data_texts[idx])
                     self.raw_data_texts[idx] = None
             
             vals = step['values']
             for i in range(0, len(vals), 2):
                 chunk = vals[i:i+2]
-                block = self.create_run_ui_block(650, 85 + (i//2)*150, chunk)
+                block = self.create_run_ui_block(off + 650, 85 + (i//2)*150, chunk)
                 self.run_blocks.append(block)
 
         elif act == 'SORT_RAM':
             vals = step['values']
             for i in range(0, len(vals), 2):
-                chunk = vals[i:i+2]
-                formatted_chunk = [str(int(v)) if v == int(v) else f"{v:.1f}" for v in chunk]
-                new_txt = ", ".join(formatted_chunk)
-                self.canvas.itemconfig(self.run_blocks[i//2][0], fill="#3498DB") 
-                self.canvas.itemconfig(self.run_blocks[i//2][1], text=new_txt)
+                if i//2 < len(self.run_blocks):
+                    chunk = vals[i:i+2]
+                    formatted_chunk = [str(int(v)) if v == int(v) else f"{v:.1f}" for v in chunk]
+                    new_txt = ", ".join(formatted_chunk)
+                    self.canvas.itemconfig(self.run_blocks[i//2][0], fill="#3498DB") 
+                    self.canvas.itemconfig(self.run_blocks[i//2][1], text=new_txt)
 
         elif act == 'WRITE_F_BUFFER':
             target, r_idx = step['target'], step['run_idx']
-            tx, ty = 55 + r_idx*125, (220 if target == "F1" else 320)
+            tx, ty = off + 55 + r_idx*125, (220 if target == "F1" else 320)
             if self.run_blocks:
                 b = self.run_blocks.pop(0)
                 self.move_block(b, tx, ty)
                 if target == "F1": self.f1_blocks.append(b)
                 else: self.f2_blocks.append(b)
 
+        # --- PASS 1+: TRỘN (MERGE) ---
         elif act == 'MERGE_LOAD_RAM':
-            """
-            Mô phỏng nạp dữ liệu từ Disk Buffer vào RAM.
-            Sử dụng hiệu ứng di chuyển thay vì xóa/tạo mới đột ngột.
-            """
-            # 1. Dọn dẹp mảng quản lý RAM cũ (không xóa trên Canvas vì ta sẽ di chuyển khối vào đây)
-            self.merge_input_blocks = [None, None, None]
-            
-            # Lấy dữ liệu dự phòng từ bước (step) nếu Disk Buffer trống
-            r1_val = step.get('r1')
-            r2_val = step.get('r2')
+            self.clear_ram_visuals()
+            r1_val, r2_val = step.get('r1'), step.get('r2')
 
-            # Hàm phụ để nạp Page 2 sau khi Page 1 đã bắt đầu bay (tạo hiệu ứng tuần tự)
-            def load_page_2():
+            def load_p2():
                 if self.f2_blocks:
-                    block_f2 = self.f2_blocks.pop(0)
-                    # Di chuyển block từ F2 lên RAM Page 2 (tọa độ 650, 235)
-                    self.move_block(block_f2, 650, 235)
-                    self.merge_input_blocks[1] = block_f2
+                    b = self.f2_blocks.pop(0)
+                    self.move_block(b, off + 650, 235)
+                    self.merge_input_blocks[1] = b
                 elif r2_val:
-                    # Trường hợp không có block ở Disk, tạo mới tại RAM
-                    self.merge_input_blocks[1] = self.create_run_ui_block(650, 235, r2_val)
+                    self.merge_input_blocks[1] = self.create_run_ui_block(off + 650, 235, r2_val)
 
-            # 2. Xử lý nạp Page 1
             if self.f1_blocks:
-                block_f1 = self.f1_blocks.pop(0)
-                # Di chuyển block từ F1 lên RAM Page 1 (tọa độ 650, 85)
-                # Sau khi bay xong có thể gọi callback để nạp tiếp page 2 hoặc nạp song song
-                self.move_block(block_f1, 650, 85) 
-                self.merge_input_blocks[0] = block_f1
-                # Nạp page 2 sau một khoảng trễ nhỏ để nhìn rõ 2 khối di chuyển
-                self.root.after(150, load_page_2)
+                b = self.f1_blocks.pop(0)
+                self.move_block(b, off + 650, 85)
+                self.merge_input_blocks[0] = b
+                self.root.after(150, load_p2)
             elif r1_val:
-                self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, r1_val)
-                load_page_2()
-            else:
-                load_page_2()
+                self.merge_input_blocks[0] = self.create_run_ui_block(off + 650, 85, r1_val)
+                load_p2()
 
         elif act == 'REPACK_RAM':
-            for b in self.merge_input_blocks:
-                if b: self.canvas.delete(b[0]); self.canvas.delete(b[1])
-            b1 = self.create_run_ui_block(650, 85, step['p1']) if step['p1'] else None
-            b2 = self.create_run_ui_block(650, 235, step['p2']) if step['p2'] else None
-            b3 = self.create_run_ui_block(650, 385, step['p3']) 
+            self.clear_ram_visuals()
+            b1 = self.create_run_ui_block(off + 650, 85, step['p1']) if step['p1'] else None
+            b2 = self.create_run_ui_block(off + 650, 235, step['p2']) if step['p2'] else None
+            b3 = self.create_run_ui_block(off + 650, 385, step['p3']) 
             self.canvas.itemconfig(b3[0], fill="#2ECC71") 
             self.merge_input_blocks = [b1, b2, b3]
 
         elif act == 'REPACK_SHIFT_DOWN':
+            # PHẦN THIẾU 1: Xóa các block cũ ở Disk nếu đã nạp xong
             sources = step.get('clear_sources', [])
             for src in sources:
                 if src == "F1" and self.f1_blocks:
                     b = self.f1_blocks.pop(0); self.canvas.delete(b[0]); self.canvas.delete(b[1])
                 elif src == "F2" and self.f2_blocks:
                     b = self.f2_blocks.pop(0); self.canvas.delete(b[0]); self.canvas.delete(b[1])
+            
             self.clear_ram_visuals()
             y_coords = [85, 235, 385]
             p_data = [step.get('p1'), step.get('p2'), step.get('p3')]
             for i in range(3):
-                if p_data[i]: self.merge_input_blocks[i] = self.create_run_ui_block(650, y_coords[i], p_data[i])
+                if p_data[i]:
+                    self.merge_input_blocks[i] = self.create_run_ui_block(off + 650, y_coords[i], p_data[i])
+
+        elif act == 'REF_LOAD_TOP':
+            # PHẦN THIẾU 2: Nạp thêm trang mới vào đỉnh RAM khi trang đó cạn
+            source = step.get('source')
+            if source == "F1" and self.f1_blocks:
+                b = self.f1_blocks.pop(0); self.canvas.delete(b[0]); self.canvas.delete(b[1])
+            elif source == "F2" and self.f2_blocks:
+                b = self.f2_blocks.pop(0); self.canvas.delete(b[0]); self.canvas.delete(b[1])
+            
+            if self.merge_input_blocks[0]:
+                self.canvas.delete(self.merge_input_blocks[0][0])
+                self.canvas.delete(self.merge_input_blocks[0][1])
+            self.merge_input_blocks[0] = self.create_run_ui_block(off + 650, 85, step['values'])
 
         elif act == 'WRITE_OUTPUT':
             if self.merge_input_blocks[2]:
                 res_block = self.merge_input_blocks[2]
                 self.merge_input_blocks[2] = None 
                 out_idx = step.get('output_idx', 0)
-                tx = 55 + (out_idx % 5) * 75
+                tx = off + 55 + (out_idx % 5) * 75
                 ty = 425 + (out_idx // 5) * 40
                 
-                def on_move_done():
+                def on_done():
                     self.canvas.delete(res_block[0]); self.canvas.delete(res_block[1])
-                    new_small = self.create_run_ui_block(tx, ty, step['values'], is_output=True)
-                    self.canvas.itemconfig(new_small[0], fill="#D32F2F")
-                self.move_block(res_block, tx, ty, callback=on_move_done)
-
-        elif act == 'REF_LOAD_TOP':
-            source = step.get('source')
-            if source == "F1" and self.f1_blocks:
-                b = self.f1_blocks.pop(0); self.canvas.delete(b[0]); self.canvas.delete(b[1])
-            elif source == "F2" and self.f2_blocks:
-                b = self.f2_blocks.pop(0); self.canvas.delete(b[0]); self.canvas.delete(b[1])
-            if self.merge_input_blocks[0]:
-                self.canvas.delete(self.merge_input_blocks[0][0]); self.canvas.delete(self.merge_input_blocks[0][1])
-            self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, step['values'])
+                    small = self.create_run_ui_block(tx, ty, step['values'], is_output=True)
+                    self.canvas.itemconfig(small[0], fill="#D32F2F")
+                self.move_block(res_block, tx, ty, callback=on_done)
 
     def clear_ram_visuals(self):
         """Xóa toàn bộ các khối UI hiện có trong khu vực RAM trên Canvas."""
