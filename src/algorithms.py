@@ -39,9 +39,12 @@ class ExternalSortEngine:
         ram_pages = [None, None, None] # [Page 1, Page 2, Page 3]
         
         # Bước 1: Nạp 2 run đầu tiên từ F1 và F2
-        if all_runs_f1: ram_pages[0] = all_runs_f1.pop(0)
-        if all_runs_f2: ram_pages[1] = all_runs_f2.pop(0)
-        io_cost += 2
+        if all_runs_f1: 
+            ram_pages[0] = all_runs_f1.pop(0)
+            io_cost += 1
+        if all_runs_f2: 
+            ram_pages[1] = all_runs_f2.pop(0)
+            io_cost += 1
         steps.append({
             'act': 'REPACK_SHIFT_DOWN', 
             'p1': ram_pages[0], 'p2': ram_pages[1], 'p3': None, 
