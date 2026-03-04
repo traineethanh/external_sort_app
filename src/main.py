@@ -71,8 +71,8 @@ class ExternalSortApp:
         self.merge_input_blocks = [] # Khối dữ liệu đang nằm trong RAM (3 trang)
 
         # Canvas: Khu vực chính để vẽ các thành phần phần cứng (Disk/RAM)
-        self.canvas = tk.Canvas(root, width=950, height=550, bg="white", highlightthickness=1)
-        self.canvas.pack(pady=10)
+        self.canvas = tk.Canvas(root, bg="white", highlightthickness=1)
+        self.canvas.pack(pady=10, padx=10, fill="both", expand=True)
         
         self.create_controls()      # Tạo các nút bấm và ô nhập liệu
         self.draw_static_frames()   # Vẽ sơ đồ cứng Disk và RAM
@@ -150,6 +150,10 @@ class ExternalSortApp:
         """
         main_frame = tk.Frame(self.root, padx=10, pady=5)
         main_frame.pack(fill="both", side="bottom", expand=False)
+
+        main_frame.columnconfigure(0, weight=1)
+        main_frame.columnconfigure(1, weight=2)
+        main_frame.columnconfigure(2, weight=1)
 
         # 1. NHÓM CẤU HÌNH DỮ LIỆU
         data_group = tk.LabelFrame(main_frame, text=" Cấu hình dữ liệu ", padx=10, pady=10, fg="#1976D2")
