@@ -318,18 +318,42 @@ class ExternalSortApp:
         act = step['act']
 
         # Xử lý các bước mô phỏng đồ họa cụ thể (Logic di chuyển/vẽ các khối UI)
-        if act == 'LOAD_RAM':
-            indices = step.get('indices', [])
-            for idx in indices:
-                if self.raw_data_texts[idx]:
-                    self.canvas.delete(self.raw_data_texts[idx])
-                    self.raw_data_texts[idx] = None
+        elif act == 'MERGE_LOAD_RAM':
+            """
+            Mô phỏng nạp dữ liệu từ Disk Buffer vào RAM.
+            Thay vì xóa và tạo mới, ta lấy block đang có ở Disk và di chuyển lên RAM.
+            """
+            # 1. Reset danh sách quản lý các block trong RAM
+            self.merge_input_blocks = [None, None, None]
             
-            vals = step['values']
-            for i in range(0, len(vals), 2):
-                chunk = vals[i:i+2]
-                block = self.create_run_ui_block(650, 85 + (i//2)*150, chunk)
-                self.run_blocks.append(block)
+            # Lấy dữ liệu dự phòng từ step (dùng nếu Disk Buffer trống)
+            r1_val = step.get('r1')
+            r2_val = step.get('r2')
+
+            def load_page_2():
+                """Hàm phụ: Thực hiện di chuyển cho Page 2 sau khi Page 1 đã xong"""
+                if self.f2_blocks:
+                    # Lấy block đang nằm chờ ở Disk Buffer F2
+                    block_f2 = self.f2_blocks.pop(0)
+                    # Di chuyển block từ vị trí hiện tại đến RAM Page 2 (650, 235)
+                    self.move_block(block_f2, 650, 235)
+                    self.merge_input_blocks[1] = block_f2
+                elif r2_val:
+                    # Nếu không có block ở Disk (lỗi logic hoặc run lẻ), tạo mới tại RAM
+                    self.merge_input_blocks[1] = self.create_run_ui_block(650, 235, r2_val)
+
+            # 2. Bắt đầu di chuyển cho Page 1
+            if self.f1_blocks:
+                # Lấy block đang nằm chờ ở Disk Buffer F1
+                block_f1 = self.f1_blocks.pop(0)
+                # Di chuyển lên RAM Page 1 (650, 85). Khi xong thì gọi load_page_2
+                self.move_block(block_f1, 650, 85, callback=load_page_2)
+                self.merge_input_blocks[0] = block_f1
+            elif r1_val:
+                self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, r1_val)
+                load_page_2() # Nạp tiếp page 2 ngay
+            else:
+                load_page_2() # Thử nạp page 2 nếu page 1 không có dữ liệu
 
         elif act == 'SORT_RAM':
             vals = step['values']
