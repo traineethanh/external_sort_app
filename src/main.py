@@ -168,7 +168,7 @@ class ExternalSortApp:
         - Thanh trạng thái: Hiển thị chi phí I/O và mô tả bước hiện tại.
         """
         main_frame = tk.Frame(self.root, padx=10, pady=5)
-        main_frame.pack(fill="both", side="bottom", expand=False)
+        main_frame.grid(row=1, column=0, sticky="ew")
 
         main_frame.columnconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=2)
@@ -218,7 +218,7 @@ class ExternalSortApp:
 
         # --- HIỂN THỊ TRẠNG THÁI ---
         info_frame = tk.Frame(self.root)
-        info_frame.pack(fill="x", side="bottom")
+        info_frame.grid(row=2, column=0, sticky="ew")
 
         self.lbl_io = tk.Label(info_frame, text="Tổng Chi Phí I/O: 0", font=("Arial", 13, "bold"), fg="#D32F2F")
         self.lbl_io.pack()
