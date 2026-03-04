@@ -318,6 +318,37 @@ class ExternalSortApp:
         act = step['act']
 
         # Xử lý các bước mô phỏng đồ họa cụ thể (Logic di chuyển/vẽ các khối UI)
+        if act == 'LOAD_RAM':
+            indices = step.get('indices', [])
+            for idx in indices:
+                if self.raw_data_texts[idx]:
+                    self.canvas.delete(self.raw_data_texts[idx])
+                    self.raw_data_texts[idx] = None
+            
+            vals = step['values']
+            for i in range(0, len(vals), 2):
+                chunk = vals[i:i+2]
+                block = self.create_run_ui_block(650, 85 + (i//2)*150, chunk)
+                self.run_blocks.append(block)
+
+        elif act == 'SORT_RAM':
+            vals = step['values']
+            for i in range(0, len(vals), 2):
+                chunk = vals[i:i+2]
+                formatted_chunk = [str(int(v)) if v == int(v) else f"{v:.1f}" for v in chunk]
+                new_txt = ", ".join(formatted_chunk)
+                self.canvas.itemconfig(self.run_blocks[i//2][0], fill="#3498DB") 
+                self.canvas.itemconfig(self.run_blocks[i//2][1], text=new_txt)
+
+        elif act == 'WRITE_F_BUFFER':
+            target, r_idx = step['target'], step['run_idx']
+            tx, ty = 55 + r_idx*125, (220 if target == "F1" else 320)
+            if self.run_blocks:
+                b = self.run_blocks.pop(0)
+                self.move_block(b, tx, ty)
+                if target == "F1": self.f1_blocks.append(b)
+                else: self.f2_blocks.append(b)
+
         elif act == 'MERGE_LOAD_RAM':
             """
             Mô phỏng nạp dữ liệu từ Disk Buffer vào RAM.
@@ -354,35 +385,6 @@ class ExternalSortApp:
                 load_page_2() # Nạp tiếp page 2 ngay
             else:
                 load_page_2() # Thử nạp page 2 nếu page 1 không có dữ liệu
-
-        elif act == 'SORT_RAM':
-            vals = step['values']
-            for i in range(0, len(vals), 2):
-                chunk = vals[i:i+2]
-                formatted_chunk = [str(int(v)) if v == int(v) else f"{v:.1f}" for v in chunk]
-                new_txt = ", ".join(formatted_chunk)
-                self.canvas.itemconfig(self.run_blocks[i//2][0], fill="#3498DB") 
-                self.canvas.itemconfig(self.run_blocks[i//2][1], text=new_txt)
-
-        elif act == 'WRITE_F_BUFFER':
-            target, r_idx = step['target'], step['run_idx']
-            tx, ty = 55 + r_idx*125, (220 if target == "F1" else 320)
-            if self.run_blocks:
-                b = self.run_blocks.pop(0)
-                self.move_block(b, tx, ty)
-                if target == "F1": self.f1_blocks.append(b)
-                else: self.f2_blocks.append(b)
-
-        elif act == 'MERGE_LOAD_RAM':
-            if self.f1_blocks:
-                old = self.f1_blocks.pop(0)
-                self.canvas.delete(old[0]); self.canvas.delete(old[1])
-            if self.f2_blocks:
-                old = self.f2_blocks.pop(0)
-                self.canvas.delete(old[0]); self.canvas.delete(old[1])
-            self.merge_input_blocks = [None, None, None]
-            self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, step['r1'])
-            self.merge_input_blocks[1] = self.create_run_ui_block(650, 235, step['r2'])
 
         elif act == 'REPACK_RAM':
             for b in self.merge_input_blocks:
