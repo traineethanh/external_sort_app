@@ -352,39 +352,40 @@ class ExternalSortApp:
         elif act == 'MERGE_LOAD_RAM':
             """
             Mô phỏng nạp dữ liệu từ Disk Buffer vào RAM.
-            Thay vì xóa và tạo mới, ta lấy block đang có ở Disk và di chuyển lên RAM.
+            Sử dụng hiệu ứng di chuyển thay vì xóa/tạo mới đột ngột.
             """
-            # 1. Reset danh sách quản lý các block trong RAM
+            # 1. Dọn dẹp mảng quản lý RAM cũ (không xóa trên Canvas vì ta sẽ di chuyển khối vào đây)
             self.merge_input_blocks = [None, None, None]
             
-            # Lấy dữ liệu dự phòng từ step (dùng nếu Disk Buffer trống)
+            # Lấy dữ liệu dự phòng từ bước (step) nếu Disk Buffer trống
             r1_val = step.get('r1')
             r2_val = step.get('r2')
 
+            # Hàm phụ để nạp Page 2 sau khi Page 1 đã bắt đầu bay (tạo hiệu ứng tuần tự)
             def load_page_2():
-                """Hàm phụ: Thực hiện di chuyển cho Page 2 sau khi Page 1 đã xong"""
                 if self.f2_blocks:
-                    # Lấy block đang nằm chờ ở Disk Buffer F2
                     block_f2 = self.f2_blocks.pop(0)
-                    # Di chuyển block từ vị trí hiện tại đến RAM Page 2 (650, 235)
+                    # Di chuyển block từ F2 lên RAM Page 2 (tọa độ 650, 235)
                     self.move_block(block_f2, 650, 235)
                     self.merge_input_blocks[1] = block_f2
                 elif r2_val:
-                    # Nếu không có block ở Disk (lỗi logic hoặc run lẻ), tạo mới tại RAM
+                    # Trường hợp không có block ở Disk, tạo mới tại RAM
                     self.merge_input_blocks[1] = self.create_run_ui_block(650, 235, r2_val)
 
-            # 2. Bắt đầu di chuyển cho Page 1
+            # 2. Xử lý nạp Page 1
             if self.f1_blocks:
-                # Lấy block đang nằm chờ ở Disk Buffer F1
                 block_f1 = self.f1_blocks.pop(0)
-                # Di chuyển lên RAM Page 1 (650, 85). Khi xong thì gọi load_page_2
-                self.move_block(block_f1, 650, 85, callback=load_page_2)
+                # Di chuyển block từ F1 lên RAM Page 1 (tọa độ 650, 85)
+                # Sau khi bay xong có thể gọi callback để nạp tiếp page 2 hoặc nạp song song
+                self.move_block(block_f1, 650, 85) 
                 self.merge_input_blocks[0] = block_f1
+                # Nạp page 2 sau một khoảng trễ nhỏ để nhìn rõ 2 khối di chuyển
+                self.root.after(150, load_page_2)
             elif r1_val:
                 self.merge_input_blocks[0] = self.create_run_ui_block(650, 85, r1_val)
-                load_page_2() # Nạp tiếp page 2 ngay
+                load_page_2()
             else:
-                load_page_2() # Thử nạp page 2 nếu page 1 không có dữ liệu
+                load_page_2()
 
         elif act == 'REPACK_RAM':
             for b in self.merge_input_blocks:
@@ -450,6 +451,8 @@ class ExternalSortApp:
             tx, ty: Tọa độ đích.
             callback: Hàm sẽ được gọi sau khi hoàn thành di chuyển.
         """
+        self.canvas.tag_raise(block_obj[0])
+        self.canvas.tag_raise(block_obj[1])
         r_id, t_id = block_obj
         curr = self.canvas.coords(r_id)
         if not curr: return
